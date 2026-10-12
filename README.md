@@ -5,7 +5,7 @@
 ![Cilium](https://img.shields.io/badge/Cilium-F8C517?logo=cilium&logoColor=black)
 ![SOPS + age](https://img.shields.io/badge/secrets-SOPS%20%2B%20age-555555)
 ![Self-hosted](https://img.shields.io/badge/self--hosted-homelab-4A90D9)
-![Status](https://img.shields.io/badge/status-M0_scaffolding-yellow)
+![Status](https://img.shields.io/badge/status-M1_nodes_on_LAN-yellow)
 
 GitOps repository for the homelab Kubernetes cluster. Everything running inside the cluster is declared here and
 applied by [Flux](https://fluxcd.io). Nothing is deployed by hand: changes land through an approved PR to `main`,
@@ -14,7 +14,7 @@ and Flux pulls and reconciles them.
 Machines and the bare cluster (OS hardening, containerd, `kubeadm init`/`join`, Cilium install) are built by Ansible in
 [HomeLab](https://github.com/GreenMachine582/HomeLab). This repo takes over from the moment Flux is bootstrapped.
 
-**⚠️ Status: M0 — scaffolding.** The cluster is not bootstrapped yet. See [Roadmap](#️-roadmap).
+**⚠️ Status: M1 — nodes on the LAN.** The cluster is not bootstrapped yet. See [Roadmap](#️-roadmap).
 
 **Quick links:** [🏗️ Architecture](#️-architecture-overview) · [🗂️ Repo Structure](#️-repo-structure) ·
 [🧩 Platform Stack](#-platform-stack) · [🔐 Secrets](#-secrets) · [🌐 Network](#-network) · [🔒 Security](#-security) ·
@@ -26,16 +26,17 @@ Machines and the bare cluster (OS hardening, containerd, `kubeadm init`/`join`, 
 ## 🏗️ Architecture Overview
 
 A single upstream Kubernetes cluster built with kubeadm, using Cilium for networking, Gateway API and LoadBalancer IPs.
-It starts on Hyper-V VMs on the main PC; the control plane moves to laptop-01 and Raspberry Pis join as workers later.
+laptop-01 runs the control plane and three Raspberry Pis are workers, all on the router LAN behind one switch.
 
-| Node        | Role                                      | Arch  | Host                                 | Status      |
-|-------------|-------------------------------------------|-------|--------------------------------------|-------------|
-| `k8s-cp-01` | Control plane (taint kept)                | amd64 | Hyper-V VM on main PC → laptop-01 (M9) | Pending M1  |
-| `k8s-wk-01` | Worker                                    | amd64 | Hyper-V VM on main PC                | Pending M1  |
-| `k8s-wk-02` | Worker                                    | amd64 | Hyper-V VM on main PC                | Pending M1  |
-| `data-01`   | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5                       | Pending M8  |
+| Node        | Role                                       | Arch  | Host                 | Status     |
+|-------------|--------------------------------------------|-------|----------------------|------------|
+| `laptop-01` | Control plane (taint kept)                 | amd64 | Old laptop, wired    | Pending M1 |
+| `rpi-01`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
+| `rpi-02`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
+| `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | Pending M1 |
 
-Outside the cluster: DNS comes from the router, and backups go to external drives on a Pi (M8).
+Outside the cluster: DNS comes from the router, and backups go to external drives on a Pi (M4). The API server is
+addressed by hostname (`controlPlaneEndpoint`), not IP, so a router or subnet change doesn't mean a rebuild.
 
 ### How changes flow
 
@@ -96,6 +97,7 @@ homelab-cluster/
 - Encrypted secrets are named `*.sops.yaml` and live next to the overlay that uses them.
 - Helm charts are pinned to exact versions; upgrades go through a PR like everything else.
 - Every workload sets resource requests and limits.
+- Images are multi-arch (amd64 + arm64): workers are Pis, and the only amd64 node is the tainted control plane.
 
 ---
 
@@ -161,11 +163,11 @@ Cluster config is rebuildable from this repo. What git can't restore is data and
 | Data                | Method                        | Destination                 | Frequency |
 |---------------------|-------------------------------|-----------------------------|-----------|
 | Cluster config      | Git                           | GitHub                      | On merge  |
-| etcd                | `etcdctl snapshot save`, keep 7 | Backup Pi (M8)            | Daily     |
-| PostgreSQL          | `pg_dump` CronJob             | Backup Pi, off the data node (M8) | Daily |
+| etcd                | `etcdctl snapshot save`, keep 7 | Backup Pi (M4)            | Daily     |
+| PostgreSQL          | `pg_dump` CronJob             | Backup Pi, off the data node (M4) | Daily |
 | age private key     | Manual offline copies         | Two locations, one off-site | On change |
 
-Restores are tested, not assumed: etcd restore in M2, Postgres restore into a separate instance in M6, full rebuild in M9.
+Restores are tested, not assumed: etcd restore in M2, Postgres restore into a separate instance in M6, full rebuild in M8.
 
 ---
 
@@ -207,18 +209,17 @@ secrets, reference it from `apps/prod/kustomization.yaml`, open a PR.
 
 | Milestone | Scope                                                        | Status  |
 |-----------|--------------------------------------------------------------|---------|
-| M0        | Repo, age key, archive discord-gateway                       | 🚧 In progress |
-| M1        | 3 Hyper-V VMs on the main PC                                 | ⏳ Pending |
+| M0        | Repo, age key, discord-gateway removed, splits frozen        | ✅ Done |
+| M1        | Nodes on the LAN: switch moved, Pis reflashed, laptop-01 ready | 🚧 In progress |
 | M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | ⏳ Pending |
 | M3        | Flux bootstrap, SOPS, branch protection                      | ⏳ Pending |
-| M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared         | ⏳ Pending |
+| M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS | ⏳ Pending |
 | M5        | Prometheus, Grafana, Loki, Alloy, Uptime Kuma                | ⏳ Pending |
-| M6        | BottleBot, GreenTechHub, Postgres, Authentik                 | ⏳ Pending |
+| M6        | Multi-arch builds; BottleBot, GreenTechHub, Postgres, Authentik | ⏳ Pending |
 | M7        | Jellyfin and remaining services                              | ⏳ Pending |
-| M8        | Pis rebuilt and joined, data node, backup drives             | ⏳ Pending |
-| M9        | Control plane on laptop-01, full DR rebuild test             | ⏳ Pending |
+| M8        | Cutover from Compose, full DR rebuild test                   | ⏳ Pending |
 
-**Backlog:** Pi-hole, external Uptime Kuma, Camunda 8, n8n, control-plane HA, CloudNativePG, multi-arch images,
+**Backlog:** Pi-hole, external Uptime Kuma, Camunda 8, n8n, control-plane HA, CloudNativePG, VLAN segmentation,
 Longhorn, network policies, GPU workloads.
 
 ---
