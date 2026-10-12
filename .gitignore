@@ -1,0 +1,19 @@
+# age private keys — never commit
+*.agekey
+age.key
+keys.txt
+
+# Cluster credentials
+kubeconfig
+*.kubeconfig
+
+# Decrypted secrets (SOPS working copies)
+*.dec.yaml
+*.decrypted.yaml
+*.sops.yaml.dec
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
