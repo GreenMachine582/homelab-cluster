@@ -30,7 +30,7 @@ laptop-01 runs the control plane and three Raspberry Pis are workers, all on the
 
 | Node        | Role                                       | Arch  | Host                 | Status     |
 |-------------|--------------------------------------------|-------|----------------------|------------|
-| `laptop-01` | Control plane (taint kept)                 | amd64 | Old laptop, wired    | On LAN (Debian 13) |
+| `laptop-01` | Control plane (taint kept)                 | amd64 | Old laptop, wired    | Bootstrapped (Debian 13) |
 | `rpi-01`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
 | `rpi-02`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
 | `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | On LAN (Raspberry Pi OS trixie) |
