@@ -33,7 +33,7 @@ laptop-01 runs the control plane and three Raspberry Pis are workers, all on the
 | `laptop-01` | Control plane (taint kept)                 | amd64 | Old laptop, wired    | Bootstrapped (Debian 13) |
 | `rpi-01`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
 | `rpi-02`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
-| `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | On LAN (Raspberry Pi OS trixie) |
+| `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | Bootstrapped (Raspberry Pi OS trixie) |
 
 Outside the cluster: DNS comes from the router, and backups go to external drives on a Pi (M4). The API server is
 addressed by hostname (`controlPlaneEndpoint`), not IP, so a router or subnet change doesn't mean a rebuild.
