@@ -30,10 +30,10 @@ laptop-01 runs the control plane and three Raspberry Pis are workers, all on the
 
 | Node        | Role                                       | Arch  | Host                 | Status     |
 |-------------|--------------------------------------------|-------|----------------------|------------|
-| `laptop-01` | Control plane (taint kept)                 | amd64 | Old laptop, wired    | Pending M1 |
+| `laptop-01` | Control plane (taint kept)                 | amd64 | Old laptop, wired    | On LAN (Debian 13) |
 | `rpi-01`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
 | `rpi-02`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
-| `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | Pending M1 |
+| `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | On LAN (Raspberry Pi OS trixie) |
 
 Outside the cluster: DNS comes from the router, and backups go to external drives on a Pi (M4). The API server is
 addressed by hostname (`controlPlaneEndpoint`), not IP, so a router or subnet change doesn't mean a rebuild.
@@ -138,6 +138,7 @@ sops apps/prod/my-app/my-app.sops.yaml
 
 ## 🌐 Network
 
+- **OS:** Debian 13 (trixie) on every node: Debian on laptop-01, Raspberry Pi OS Lite on the Pis.
 - **DNS:** nodes use the router's DNS. In-cluster names resolve via CoreDNS. Pi-hole is backlogged.
 - **LAN services:** exposed through a Cilium Gateway on an LB-IPAM address outside the router's DHCP pool.
 - **Public services:** reach the cluster only through cloudflared's outbound tunnel. No router port forwards.
