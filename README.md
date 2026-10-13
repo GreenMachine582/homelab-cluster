@@ -26,7 +26,8 @@ Machines and the bare cluster (OS hardening, containerd, `kubeadm init`/`join`, 
 ## 🏗️ Architecture Overview
 
 A single upstream Kubernetes cluster built with kubeadm, using Cilium for networking, Gateway API and LoadBalancer IPs.
-laptop-01 runs the control plane and three Raspberry Pis are workers, all on the router LAN behind one switch.
+laptop-01 runs the control plane and three Raspberry Pis are workers, on one switch at a remote site with static
+LAN IPs. Everything is managed from home over Tailscale (Ansible, kubectl, a subnet route to the site LAN).
 
 | Node        | Role                                       | Arch  | Host                 | Status     |
 |-------------|--------------------------------------------|-------|----------------------|------------|
@@ -35,7 +36,8 @@ laptop-01 runs the control plane and three Raspberry Pis are workers, all on the
 | `rpi-02`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
 | `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | Bootstrapped (Raspberry Pi OS trixie) |
 
-Outside the cluster: DNS comes from the router, and backups go to external drives on a Pi (M4). The API server is
+Outside the cluster: DNS comes from the site router, and backups go to external drives on a Pi (M4) with a copy
+fetched home. The API server is
 addressed by hostname (`controlPlaneEndpoint`), not IP, so a router or subnet change doesn't mean a rebuild.
 
 ### How changes flow
