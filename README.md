@@ -5,7 +5,7 @@
 ![Cilium](https://img.shields.io/badge/Cilium-F8C517?logo=cilium&logoColor=black)
 ![SOPS + age](https://img.shields.io/badge/secrets-SOPS%20%2B%20age-555555)
 ![Self-hosted](https://img.shields.io/badge/self--hosted-homelab-4A90D9)
-![Status](https://img.shields.io/badge/status-M1_nodes_on_LAN-yellow)
+![Status](https://img.shields.io/badge/status-M2_cluster_bootstrap-yellow)
 
 GitOps repository for the homelab Kubernetes cluster. Everything running inside the cluster is declared here and
 applied by [Flux](https://fluxcd.io). Nothing is deployed by hand: changes land through an approved PR to `main`,
@@ -14,7 +14,7 @@ and Flux pulls and reconciles them.
 Machines and the bare cluster (OS hardening, containerd, `kubeadm init`/`join`, Cilium install) are built by Ansible in
 [HomeLab](https://github.com/GreenMachine582/HomeLab). This repo takes over from the moment Flux is bootstrapped.
 
-**⚠️ Status: M1 — nodes on the LAN.** The cluster is not bootstrapped yet. See [Roadmap](#️-roadmap).
+**⚠️ Status: M2 — cluster bootstrap.** Nodes are provisioned; Kubernetes isn't installed yet. See [Roadmap](#️-roadmap).
 
 **Quick links:** [🏗️ Architecture](#️-architecture-overview) · [🗂️ Repo Structure](#️-repo-structure) ·
 [🧩 Platform Stack](#-platform-stack) · [🔐 Secrets](#-secrets) · [🌐 Network](#-network) · [🔒 Security](#-security) ·
@@ -142,6 +142,7 @@ sops apps/prod/my-app/my-app.sops.yaml
 - **DNS:** nodes use the router's DNS. In-cluster names resolve via CoreDNS. Pi-hole is backlogged.
 - **LAN services:** exposed through a Cilium Gateway on an LB-IPAM address outside the router's DHCP pool.
 - **Public services:** reach the cluster only through cloudflared's outbound tunnel. No router port forwards.
+- **Cluster ranges:** pods 10.244.0.0/16, Services 10.96.0.0/12; API at `k8s-api:6443`.
 - **Admin access:** `kubectl` from the main PC; node SSH and Tailscale are managed in HomeLab.
 
 ---
@@ -211,8 +212,8 @@ secrets, reference it from `apps/prod/kustomization.yaml`, open a PR.
 | Milestone | Scope                                                        | Status  |
 |-----------|--------------------------------------------------------------|---------|
 | M0        | Repo, age key, discord-gateway removed, splits frozen        | ✅ Done |
-| M1        | Nodes on the LAN: switch moved, Pis reflashed, laptop-01 ready | 🚧 In progress |
-| M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | ⏳ Pending |
+| M1        | Nodes on the LAN: switch moved, nodes bootstrapped by Ansible | ✅ Done |
+| M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | 🚧 In progress |
 | M3        | Flux bootstrap, SOPS, branch protection                      | ⏳ Pending |
 | M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS | ⏳ Pending |
 | M5        | Prometheus, Grafana, Loki, Alloy, Uptime Kuma                | ⏳ Pending |
