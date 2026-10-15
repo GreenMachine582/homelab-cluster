@@ -1,0 +1,27 @@
+# Flux syncs clusters/prod from main. Generated with flux create ... --export
+# (Flux v2.9.6). Public repo over https: no deploy key. Applied once by HomeLab's
+# playbooks/flux_bootstrap.yml; after that Flux manages it from git.
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  ref:
+    branch: main
+  url: https://github.com/GreenMachine582/homelab-cluster
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./clusters/prod
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system

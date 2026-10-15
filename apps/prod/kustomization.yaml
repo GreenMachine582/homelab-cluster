@@ -1,0 +1,5 @@
+# One entry per service overlay (apps/prod/<service>), applied by the apps
+# Kustomization (clusters/prod/apps.yaml).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: []

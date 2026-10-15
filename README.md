@@ -5,7 +5,7 @@
 ![Cilium](https://img.shields.io/badge/Cilium-F8C517?logo=cilium&logoColor=black)
 ![SOPS + age](https://img.shields.io/badge/secrets-SOPS%20%2B%20age-555555)
 ![Self-hosted](https://img.shields.io/badge/self--hosted-homelab-4A90D9)
-![Status](https://img.shields.io/badge/status-M2_cluster_bootstrap-yellow)
+![Status](https://img.shields.io/badge/status-M3_GitOps-yellow)
 
 GitOps repository for the homelab Kubernetes cluster. Everything running inside the cluster is declared here and
 applied by [Flux](https://fluxcd.io). Nothing is deployed by hand: changes land through an approved PR to `main`,
@@ -14,7 +14,8 @@ and Flux pulls and reconciles them.
 Machines and the bare cluster (OS hardening, containerd, `kubeadm init`/`join`, Cilium install) are built by Ansible in
 [HomeLab](https://github.com/GreenMachine582/HomeLab). This repo takes over from the moment Flux is bootstrapped.
 
-**⚠️ Status: M2 — cluster bootstrap.** Nodes are provisioned; Kubernetes isn't installed yet. See [Roadmap](#️-roadmap).
+**⚠️ Status: M3 — GitOps.** The cluster is up on all four nodes, Cilium passes its connectivity test, and etcd snapshots
+are taken daily with a tested restore. Flux isn't bootstrapped yet. See [Roadmap](#️-roadmap).
 
 **Quick links:** [🏗️ Architecture](#️-architecture-overview) · [🗂️ Repo Structure](#️-repo-structure) ·
 [🧩 Platform Stack](#-platform-stack) · [🔐 Secrets](#-secrets) · [🌐 Network](#-network) · [🔒 Security](#-security) ·
@@ -31,7 +32,7 @@ LAN IPs. Everything is managed from home over Tailscale (Ansible, kubectl, a sub
 
 | Node        | Role                                       | Arch  | Host                 | Status     |
 |-------------|--------------------------------------------|-------|----------------------|------------|
-| `laptop-01` | Control plane (taint kept)                 | amd64 | Old laptop, wired    | Bootstrapped (Debian 13) |
+| `laptop-01` | Control plane (taint kept)                 | amd64 | Old laptop, wired    | Joined (Debian 13) |
 | `rpi-01`    | Worker, no Envoy (see below)               | arm64 | Raspberry Pi 4, 2 GB | Joined (Raspberry Pi OS trixie) |
 | `rpi-02`    | Worker, no Envoy (see below)               | arm64 | Raspberry Pi 4, 8 GB | Joined (Raspberry Pi OS trixie) |
 | `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | Joined (Raspberry Pi OS trixie) |
@@ -196,7 +197,17 @@ Uptime Kuma on a Pi is in the backlog.
 
 ## 🛠️ Working in this repo
 
-**Tools:** `kubectl`, `flux`, `sops`, `age`, `kustomize`, `helm` (run from WSL on the main PC).
+**Tools:** `kubectl`, `flux`, `sops`, `age`, `kustomize`, `helm` (run from WSL on the main PC; HomeLab's
+`controller.yml` installs kubectl, flux, sops and age).
+
+**Bootstrapping Flux:** not `flux bootstrap github`. Flux's manifests live in `clusters/prod/flux-system`
+(`gotk-components.yaml` = `flux install --export`, `gotk-sync.yaml` = GitRepository + Kustomization), and HomeLab's
+`playbooks/flux_bootstrap.yml` applies them once with the `sops-age` secret. The repo is public, so Flux needs no
+deploy key, and nothing pushes to `main` outside a PR. Re-run the playbook to repair a broken Flux.
+
+**Upgrading Flux:** in a PR, regenerate `clusters/prod/flux-system/gotk-components.yaml` with the new CLI
+(`flux install --export > …`), and bump `flux_version` in HomeLab's `group_vars/k8s.yml`. Flux upgrades itself
+when the PR is merged.
 
 ```bash
 # Check what Flux is doing
@@ -221,8 +232,8 @@ secrets, reference it from `apps/prod/kustomization.yaml`, open a PR.
 |-----------|--------------------------------------------------------------|---------|
 | M0        | Repo, age key, discord-gateway removed, splits frozen        | ✅ Done |
 | M1        | Nodes on the LAN: switch moved, nodes bootstrapped by Ansible | ✅ Done |
-| M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | 🚧 In progress |
-| M3        | Flux bootstrap, SOPS, branch protection                      | ⏳ Pending |
+| M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | ✅ Done |
+| M3        | Flux bootstrap, SOPS, branch protection                      | 🚧 Next |
 | M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS | ⏳ Pending |
 | M5        | Prometheus, Grafana, Loki, Alloy, Uptime Kuma                | ⏳ Pending |
 | M6        | Multi-arch builds; BottleBot, GreenTechHub, Postgres, Authentik | ⏳ Pending |

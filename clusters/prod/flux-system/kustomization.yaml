@@ -1,0 +1,8 @@
+# Flux itself. gotk-components.yaml is `flux install --export` for the version
+# in HomeLab's group_vars/k8s.yml (flux_version); upgrade by regenerating it
+# in a PR.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - gotk-components.yaml
+  - gotk-sync.yaml
