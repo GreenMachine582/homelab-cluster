@@ -1,0 +1,53 @@
+---
+# Cilium, installed by Ansible (HomeLab: roles/cilium_install) as the Helm
+# release "cilium" in kube-system; Flux adopts that release (same name and
+# namespace). Inert until M3 wires clusters/prod to infrastructure/.
+#
+# Keep in step with HomeLab:
+# - values: roles/cilium_install/vars/main.yml (_cilium_settings). Compare
+#   with the deployed values that playbooks/cluster_status.yml prints
+#   ("Cilium Helm release values").
+# - version: cilium_version in inventories/group_vars/k8s.yml. Held at 1.20.1:
+#   1.20.2 loads socket-LB programs that need kernel BTF, which the Raspberry
+#   Pi OS kernels lack.
+#
+# Node-level settings Cilium also depends on stay in Ansible
+# (roles/k8s_prereqs: src_valid_mark=0, accept_local on lxc*).
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  releaseName: cilium
+  interval: 30m
+  chart:
+    spec:
+      chart: cilium
+      version: "1.20.1"
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: flux-system
+  values:
+    kubeProxyReplacement: true
+    # laptop-01's LAN IP: the agents reach the API by IP, because they don't
+    # see the nodes' /etc/hosts entry for k8s-api.
+    k8sServiceHost: 192.168.50.21
+    k8sServicePort: 6443
+    ipam:
+      mode: kubernetes
+    operator:
+      replicas: 1
+      rollOutPods: true
+    # Restart the pods when cilium-config changes; otherwise a values-only
+    # upgrade leaves the agents running the old config.
+    rollOutCiliumPods: true
+    envoy:
+      rollOutPods: true
+      # Envoy's tcmalloc needs a 48-bit virtual address space; the Pi 4
+      # kernel is 39-bit, so Envoy only runs on nodes HomeLab labels
+      # homelab/l7-proxy=supported (laptop-01, rpi-03). Workloads that need
+      # L7/FQDN/TLS policy or the Gateway must select that label too.
+      nodeSelector:
+        homelab/l7-proxy: supported

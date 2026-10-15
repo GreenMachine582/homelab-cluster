@@ -32,9 +32,15 @@ LAN IPs. Everything is managed from home over Tailscale (Ansible, kubectl, a sub
 | Node        | Role                                       | Arch  | Host                 | Status     |
 |-------------|--------------------------------------------|-------|----------------------|------------|
 | `laptop-01` | Control plane (taint kept)                 | amd64 | Old laptop, wired    | Bootstrapped (Debian 13) |
-| `rpi-01`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
-| `rpi-02`    | Worker                                     | arm64 | Raspberry Pi         | Pending M1 |
-| `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | Bootstrapped (Raspberry Pi OS trixie) |
+| `rpi-01`    | Worker, no Envoy (see below)               | arm64 | Raspberry Pi 4, 2 GB | Joined (Raspberry Pi OS trixie) |
+| `rpi-02`    | Worker, no Envoy (see below)               | arm64 | Raspberry Pi 4, 8 GB | Joined (Raspberry Pi OS trixie) |
+| `rpi-03`    | Worker, tainted for databases (local NVMe) | arm64 | Raspberry Pi 5, 8 GB | Joined (Raspberry Pi OS trixie) |
+
+**Envoy only runs on laptop-01 and rpi-03.** The Raspberry Pi kernel for the Pi 4 has a 39-bit virtual address
+space and Envoy's tcmalloc needs 48-bit, so the Pi 4s are labelled `homelab/l7-proxy=unsupported` and the
+`cilium-envoy` DaemonSet is pinned to `homelab/l7-proxy=supported`
+([`infrastructure/controllers/cilium/helmrelease.yaml`](infrastructure/controllers/cilium/helmrelease.yaml)).
+Anything that needs L7/FQDN/TLS network policy, or serves through the Gateway, must select that label.
 
 Outside the cluster: DNS comes from the site router, and backups go to external drives on a Pi (M4) with a copy
 fetched home. The API server is
