@@ -4,9 +4,9 @@
 # namespace). Inert until M3 wires clusters/prod to infrastructure/.
 #
 # Keep in step with HomeLab:
-# - values: roles/cilium_install/vars/main.yml (_cilium_settings). These are
-#   exactly the deployed release values (chart 1.20.1, revision 6, read with
-#   playbooks/cluster_status.yml "Cilium Helm release values").
+# - values: roles/cilium_install/vars/main.yml (_cilium_settings). Compare
+#   with the deployed values that playbooks/cluster_status.yml prints
+#   ("Cilium Helm release values").
 # - version: cilium_version in inventories/group_vars/k8s.yml. Held at 1.20.1:
 #   1.20.2 loads socket-LB programs that need kernel BTF, which the Raspberry
 #   Pi OS kernels lack.
@@ -45,3 +45,9 @@ spec:
     rollOutCiliumPods: true
     envoy:
       rollOutPods: true
+      # Envoy's tcmalloc needs a 48-bit virtual address space; the Pi 4
+      # kernel is 39-bit, so Envoy only runs on nodes HomeLab labels
+      # homelab/l7-proxy=supported (laptop-01, rpi-03). Workloads that need
+      # L7/FQDN/TLS policy or the Gateway must select that label too.
+      nodeSelector:
+        homelab/l7-proxy: supported
