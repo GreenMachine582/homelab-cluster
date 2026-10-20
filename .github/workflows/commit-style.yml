@@ -1,0 +1,61 @@
+name: Commit style
+
+# Conventional Commits on every PR to main: the PR title (GitHub uses it for
+# squash merges) and each non-merge commit in the PR. See CONTRIBUTING.md.
+# Required status check on the main ruleset: commit-style.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  commit-style:
+    name: commit-style
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The title comes in through env, never inlined into the script.
+      - name: Check the PR title and commit messages
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pattern='^(feat|fix|docs|chore|refactor|test|ci|build|perf|revert)(\([a-z0-9._/-]+\))?!?: [^ ].*[^. ]$'
+          exempt='^(Merge (pull request|branch|remote-tracking branch) |Revert ")'
+          fail=0
+
+          check() {
+            where="$1"; header="$2"
+            printf '%s\n' "$header" | grep -Eq "$exempt" && return 0
+            if ! printf '%s\n' "$header" | grep -Eq "$pattern"; then
+              echo "::error::$where: \"$header\" is not type(scope): subject"
+              fail=1
+            elif [ "${#header}" -gt 100 ]; then
+              echo "::error::$where: header is ${#header} characters, max 100: \"$header\""
+              fail=1
+            else
+              echo "ok  $where: $header"
+            fi
+          }
+
+          check "PR title" "$PR_TITLE"
+          while IFS= read -r line; do
+            check "commit ${line%% *}" "${line#* }"
+          done < <(git log --no-merges --format='%h %s' "$BASE..$HEAD")
+
+          if [ "$fail" -ne 0 ]; then
+            echo
+            echo "Expected: type(scope): subject, at most 100 characters, no trailing period."
+            echo "Types: feat fix docs chore refactor test ci build perf revert. Scope is optional."
+            echo "Rewrite with: git commit --amend, or git rebase -i (then force-push the branch)."
+            exit 1
+          fi
