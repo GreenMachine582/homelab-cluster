@@ -17,7 +17,7 @@ here as it lands.
 | LAN hostnames | Hosts-file entries on the PC pointing at the Gateway IP (HomeLab `k8s_client`), until Pi-hole (backlog) |
 | LoadBalancer IPs | Cilium LB-IPAM, one small pool on the site LAN outside the router's DHCP pool, announced with Cilium L2 announcements (ARP) |
 | Where L2 answers | Only nodes labelled `homelab/l7-proxy=supported` (laptop-01, rpi-03). The Gateway's traffic goes through Envoy, which can't run on the Pi 4s |
-| Gateway | Cilium Gateway API (v1.6.1 CRDs, standard channel), one shared `Gateway` in `gateway`, HTTPS listener with the wildcard cert, HTTP → HTTPS redirect |
+| Gateway | Cilium Gateway API (v1.6.1 CRDs, standard channel, imported by commit, not vendored), one shared `Gateway` in `gateway`, HTTPS listener with the wildcard cert, HTTP → HTTPS redirect |
 | Storage | `local-nvme` StorageClass (no provisioner, `WaitForFirstConsumer`, `Retain`). PVs are created per workload in M6, on rpi-03's `/mnt/nvme/k8s/<name>` |
 | Public access | cloudflared Deployment (2 replicas, arm64), locally-managed tunnel: ingress rules in git, credentials as a SOPS secret. The tunnel forwards to the Gateway inside the cluster |
 | Backups | External drive on a Pi at the site, served over NFS. etcd snapshots copied there daily (still also fetched home) |
@@ -28,7 +28,7 @@ here as it lands.
 | # | Repo | PR | Needs | Status |
 |---|---|---|---|---|
 | 1 | homelab-cluster | **cert-manager** controller (HelmRelease v1.21.2, CRDs managed by the chart) | — | [#6](https://github.com/GreenMachine582/homelab-cluster/pull/6) |
-| 2 | homelab-cluster | **Gateway API + L2 announcements**: Gateway API v1.6.1 CRDs; Cilium `gatewayAPI.enabled`, `l2announcements.enabled`, `externalIPs.enabled`, a higher API client rate limit. Restarts the Cilium agents once | — | [#7](https://github.com/GreenMachine582/homelab-cluster/pull/7) |
+| 2 | homelab-cluster | **Gateway API + L2 announcements**: Gateway API v1.6.1 CRDs imported from upstream (GitRepository pinned by commit, applied by a service account limited to CRDs and admission policies); Cilium `gatewayAPI.enabled`, `l2announcements.enabled`, `externalIPs.enabled`, a higher API client rate limit. Restarts the Cilium agents once | — | [#12](https://github.com/GreenMachine582/homelab-cluster/pull/12) |
 | 3 | homelab-cluster | **`infrastructure-configs` Kustomization + `local-nvme` StorageClass** | — | [#8](https://github.com/GreenMachine582/homelab-cluster/pull/8) |
 | 4 | homelab-cluster | **LB-IPAM pool + L2 announcement policy** (`infrastructure/configs/cilium/`) | The site router's DHCP pool, to confirm the range | [#9](https://github.com/GreenMachine582/homelab-cluster/pull/9) (draft, on #8) |
 | 5 | homelab-cluster | **ClusterIssuers** (`letsencrypt-staging`, `letsencrypt`) with the Cloudflare token as a SOPS secret | Cloudflare API token, scoped to Zone:DNS:Edit on `green-tech-hub.com` | To do |
@@ -36,6 +36,7 @@ here as it lands.
 | 7 | HomeLab | **PC hosts entries** for `*.home.green-tech-hub.com` names → Gateway IP (`k8s_client`) | 6 (the IP) | To do |
 | 8 | homelab-cluster | **cloudflared**: Deployment, config with ingress rules, SOPS tunnel credentials; public `whoami.green-tech-hub.com` | Tunnel created (`cloudflared tunnel create homelab`), DNS CNAME | To do |
 | 9 | HomeLab | **Backup target**: role for the external drive (mount by UUID, NFS export to the site LAN), `etcd_backup` copies snapshots there | Drive attached to a Pi | Waiting for hardware |
+| — | homelab-cluster | **Block remote kustomize bases** (`--no-remote-bases=true`): external content only through pinned Flux sources | — | [#10](https://github.com/GreenMachine582/homelab-cluster/pull/10) |
 | 10 | both | **Docs + M4 exit**: runbook for adding a service behind the Gateway; M4 marked done | 1–9 | To do |
 
 Order: 1, 2 and 3 can merge in any order. Then 4 once the range is confirmed, and 5 once the token exists. Then 6
