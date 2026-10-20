@@ -1,8 +1,0 @@
-# M3 smoke test: proves the apps Kustomization applies, SOPS-decrypts and
-# prunes. Removed in a follow-up PR once verified.
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - namespace.yaml
-  - configmap.yaml
-  - secret.sops.yaml
