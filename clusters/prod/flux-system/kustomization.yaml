@@ -6,3 +6,16 @@ kind: Kustomization
 resources:
   - gotk-components.yaml
   - gotk-sync.yaml
+
+# No remote bases: a kustomization.yaml may only reference files inside its
+# Flux source, never a URL. Everything applied must come from a source whose
+# version a PR pinned (this repo, a GitRepository by commit, a chart version),
+# not whatever a URL serves at reconcile time. Off by default in Flux.
+patches:
+  - target:
+      kind: Deployment
+      name: kustomize-controller
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --no-remote-bases=true
