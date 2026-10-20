@@ -1,0 +1,17 @@
+---
+# Gateway API v1.6.1 CRDs, standard channel: the version and set Cilium 1.20
+# requires (docs.cilium.io, Gateway API installation). Vendored from
+# github.com/kubernetes-sigs/gateway-api config/crd/standard, because Flux
+# doesn't fetch remote bases. Upgrade them together with Cilium, in one PR,
+# after reading Cilium's upgrade notes. TCPRoute, UDPRoute and ListenerSet
+# are optional and left out.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - backendtlspolicies.yaml
+  - gatewayclasses.yaml
+  - gateways.yaml
+  - grpcroutes.yaml
+  - httproutes.yaml
+  - referencegrants.yaml
+  - tlsroutes.yaml

@@ -14,6 +14,10 @@
 #
 # Node-level settings Cilium also depends on stay in Ansible
 # (roles/k8s_prereqs: src_valid_mark=0, accept_local on lxc*).
+#
+# Flux-only values (not in HomeLab's seed; a rebuild starts with a plain CNI
+# and Flux upgrades it): gatewayAPI and l2announcements, M4. See
+# docs/M4_PLATFORM.md.
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -52,3 +56,12 @@ spec:
       # L7/FQDN/TLS policy or the Gateway must select that label too.
       nodeSelector:
         homelab/l7-proxy: supported
+    # The Gateway (M4). Needs the Gateway API CRDs in ../gateway-api; the
+    # operator only looks for them when it starts.
+    gatewayAPI:
+      enabled: true
+    # Answer ARP for LB-IPAM addresses (infrastructure/configs/cilium). The
+    # announcement policy limits it to l7-proxy=supported nodes, where the
+    # Gateway's Envoy runs.
+    l2announcements:
+      enabled: true
