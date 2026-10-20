@@ -27,10 +27,10 @@ here as it lands.
 
 | # | Repo | PR | Needs | Status |
 |---|---|---|---|---|
-| 1 | homelab-cluster | **cert-manager** controller (HelmRelease v1.21.2, CRDs managed by the chart) | — | Open |
-| 2 | homelab-cluster | **Gateway API + L2 announcements**: Gateway API v1.6.1 CRDs; Cilium `gatewayAPI.enabled`, `l2announcements.enabled`, `externalIPs.enabled`, a higher API client rate limit. Restarts the Cilium agents once | — | Open |
-| 3 | homelab-cluster | **`infrastructure-configs` Kustomization + `local-nvme` StorageClass** | — | Open |
-| 4 | homelab-cluster | **LB-IPAM pool + L2 announcement policy** (`infrastructure/configs/cilium/`) | The site router's DHCP pool, to confirm the range | Draft |
+| 1 | homelab-cluster | **cert-manager** controller (HelmRelease v1.21.2, CRDs managed by the chart) | — | [#6](https://github.com/GreenMachine582/homelab-cluster/pull/6) |
+| 2 | homelab-cluster | **Gateway API + L2 announcements**: Gateway API v1.6.1 CRDs; Cilium `gatewayAPI.enabled`, `l2announcements.enabled`, `externalIPs.enabled`, a higher API client rate limit. Restarts the Cilium agents once | — | [#7](https://github.com/GreenMachine582/homelab-cluster/pull/7) |
+| 3 | homelab-cluster | **`infrastructure-configs` Kustomization + `local-nvme` StorageClass** | — | [#8](https://github.com/GreenMachine582/homelab-cluster/pull/8) |
+| 4 | homelab-cluster | **LB-IPAM pool + L2 announcement policy** (`infrastructure/configs/cilium/`) | The site router's DHCP pool, to confirm the range | [#9](https://github.com/GreenMachine582/homelab-cluster/pull/9) (draft, on #8) |
 | 5 | homelab-cluster | **ClusterIssuers** (`letsencrypt-staging`, `letsencrypt`) with the Cloudflare token as a SOPS secret | Cloudflare API token, scoped to Zone:DNS:Edit on `green-tech-hub.com` | To do |
 | 6 | homelab-cluster | **Gateway**: namespace, wildcard `Certificate`, `Gateway` with HTTPS + redirect, test app `whoami` with an `HTTPRoute` | 2, 4, 5 | To do |
 | 7 | HomeLab | **PC hosts entries** for `*.home.green-tech-hub.com` names → Gateway IP (`k8s_client`) | 6 (the IP) | To do |
