@@ -60,6 +60,12 @@ spec:
     # clusters/prod/gateway-api.yaml applies before this Kustomization.
     gatewayAPI:
       enabled: true
+      # Always create the cilium GatewayClass. The default, auto, renders it
+      # only if helm-controller's cached API discovery already lists
+      # GatewayClass, which missed the CRDs on the first upgrade (v9). The
+      # CRD always exists first: infrastructure depends on gateway-api-crds.
+      gatewayClass:
+        create: true
     # Answer ARP for LB-IPAM addresses (infrastructure/configs/cilium). The
     # announcement policy limits it to l7-proxy=supported nodes, where the
     # Gateway's Envoy runs.
