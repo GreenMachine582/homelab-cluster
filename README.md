@@ -5,7 +5,7 @@
 ![Cilium](https://img.shields.io/badge/Cilium-F8C517?logo=cilium&logoColor=black)
 ![SOPS + age](https://img.shields.io/badge/secrets-SOPS%20%2B%20age-555555)
 ![Self-hosted](https://img.shields.io/badge/self--hosted-homelab-4A90D9)
-![Status](https://img.shields.io/badge/status-M3_GitOps-yellow)
+![Status](https://img.shields.io/badge/status-M4_Platform-yellow)
 
 GitOps repository for the homelab Kubernetes cluster. Everything running inside the cluster is declared here and
 applied by [Flux](https://fluxcd.io). Nothing is deployed by hand: changes land through an approved PR to `main`,
@@ -14,9 +14,10 @@ and Flux pulls and reconciles them.
 Machines and the bare cluster (OS hardening, containerd, `kubeadm init`/`join`, Cilium install) are built by Ansible in
 [HomeLab](https://github.com/GreenMachine582/HomeLab). This repo takes over from the moment Flux is bootstrapped.
 
-**⚠️ Status: M3 — GitOps.** The cluster is up on all four nodes, Cilium passes its connectivity test, and etcd snapshots
-are taken daily with a tested restore. Flux runs from `main`, and SOPS apply, decrypt and prune are proven by the
-M3 smoke test. Flux adopting the Cilium Helm release is the last M3 step. See [Roadmap](#️-roadmap).
+**⚠️ Status: M4 — Platform.** The cluster is up on all four nodes, with daily etcd snapshots and a tested restore.
+Flux runs everything from `main`, including Cilium, and SOPS secrets are proven. M4 adds LoadBalancer IPs, the
+Gateway with TLS, storage, the Cloudflare tunnel and a backup target: see [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md)
+and the [Roadmap](#️-roadmap).
 
 **Quick links:** [🏗️ Architecture](#️-architecture-overview) · [🗂️ Repo Structure](#️-repo-structure) ·
 [🧩 Platform Stack](#-platform-stack) · [🔐 Secrets](#-secrets) · [🌐 Network](#-network) · [🔒 Security](#-security) ·
@@ -237,8 +238,8 @@ secrets, reference it from `apps/prod/kustomization.yaml`, open a PR.
 | M0        | Repo, age key, discord-gateway removed, splits frozen        | ✅ Done |
 | M1        | Nodes on the LAN: switch moved, nodes bootstrapped by Ansible | ✅ Done |
 | M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | ✅ Done |
-| M3        | Flux bootstrap, SOPS, branch protection                      | 🚧 In progress |
-| M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS | ⏳ Pending |
+| M3        | Flux bootstrap, SOPS, branch protection, Cilium adopted      | ✅ Done |
+| M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS ([plan](docs/M4_PLATFORM.md)) | 🚧 In progress |
 | M5        | Prometheus, Grafana, Loki, Alloy, Uptime Kuma                | ⏳ Pending |
 | M6        | Multi-arch builds; BottleBot, GreenTechHub, Postgres, Authentik | ⏳ Pending |
 | M7        | Jellyfin and remaining services                              | ⏳ Pending |
