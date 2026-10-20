@@ -1,7 +1,0 @@
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: smoke
-  labels:
-    app.kubernetes.io/part-of: m3-smoke-test
