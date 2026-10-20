@@ -1,9 +1,10 @@
 ---
-# Cilium, installed by Ansible (HomeLab: roles/cilium_install) as the Helm
-# release "cilium" in kube-system; Flux adopts that release (same name and
-# namespace). Inert until M3 wires clusters/prod to infrastructure/.
+# Cilium, first installed by Ansible (HomeLab: roles/cilium_install) as the
+# Helm release "cilium" in kube-system; Flux adopted that release in M3 (same
+# name and namespace) and owns upgrades from here. Ansible only installs it on
+# a fresh cluster, where Flux can't start without a CNI.
 #
-# Keep in step with HomeLab:
+# Keep HomeLab's fresh-install seed in step, so a rebuild comes up the same:
 # - values: roles/cilium_install/vars/main.yml (_cilium_settings). Compare
 #   with the deployed values that playbooks/cluster_status.yml prints
 #   ("Cilium Helm release values").

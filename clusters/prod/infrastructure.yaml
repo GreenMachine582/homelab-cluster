@@ -1,0 +1,21 @@
+# Platform layer: infrastructure/controllers (Cilium now; cert-manager and the
+# rest in M4). apps waits for it (dependsOn in apps.yaml).
+#
+# prune: false. Cilium is the CNI: removing this Kustomization or a file
+# under it must never uninstall it. Revisit when M4 adds controllers that
+# are safe to prune, or give Cilium its own Kustomization.
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./infrastructure/controllers
+  prune: false
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  timeout: 10m0s
+  wait: true
