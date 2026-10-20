@@ -1,0 +1,56 @@
+---
+# cert-manager: TLS certificates for the Gateway (M4). The ClusterIssuers
+# (Let's Encrypt DNS-01 via Cloudflare) live in infrastructure/configs, so
+# they apply after these CRDs exist. See docs/M4_PLATFORM.md.
+#
+# Gateway API support (config.enableGatewayAPI) stays off: the Gateway
+# references a Certificate created explicitly, and the gateway-shim would
+# need the Gateway API CRDs before cert-manager starts.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+spec:
+  releaseName: cert-manager
+  interval: 30m
+  chart:
+    spec:
+      chart: cert-manager
+      version: "v1.21.2"
+      sourceRef:
+        kind: HelmRepository
+        name: jetstack
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # The chart installs and upgrades the CRDs; keep them if the release is
+    # ever uninstalled, so Certificates and their Secrets survive.
+    crds:
+      enabled: true
+      keep: true
+    # Check DNS-01 propagation against public resolvers, not the site
+    # router.
+    extraArgs:
+      - --dns01-recursive-nameservers-only
+      - --dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { memory: 256Mi }
+    webhook:
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { memory: 128Mi }
+    cainjector:
+      resources:
+        requests: { cpu: 10m, memory: 64Mi }
+        limits: { memory: 256Mi }
+    startupapicheck:
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { memory: 128Mi }
