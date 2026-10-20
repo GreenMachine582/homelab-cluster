@@ -1,0 +1,13 @@
+---
+# Local volumes on rpi-03's NVMe (/mnt/nvme). No provisioner: each workload
+# brings its own PersistentVolume (M6), with a path under /mnt/nvme/k8s/ and
+# node affinity to rpi-03. WaitForFirstConsumer binds the claim only once
+# the pod is scheduled, so it lands where its volume is. Not the default
+# class: a claim must ask for it by name.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-nvme
+provisioner: kubernetes.io/no-provisioner
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer

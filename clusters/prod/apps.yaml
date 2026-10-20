@@ -1,6 +1,6 @@
 # Applications: apps/prod, with SOPS decryption (the sops-age secret that
 # HomeLab's playbooks/flux_bootstrap.yml creates from the age key). Waits for
-# the platform layer (infrastructure.yaml).
+# the platform layer (infrastructure.yaml, infrastructure-configs.yaml).
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -14,6 +14,7 @@ spec:
       name: sops-age
   dependsOn:
     - name: infrastructure
+    - name: infrastructure-configs
   interval: 10m0s
   path: ./apps/prod
   prune: true
