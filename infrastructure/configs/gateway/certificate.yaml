@@ -1,0 +1,20 @@
+---
+# The wildcard certificate for LAN services, on the Gateway's HTTPS listener.
+# Issued by DNS-01 (infrastructure/configs/cert-manager), so no inbound ports.
+#
+# Starts on letsencrypt-staging, to prove the Cloudflare token and DNS-01
+# without spending production rate limits. Switch issuerRef to letsencrypt
+# once it shows Ready; cert-manager then reissues into the same Secret.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-home
+  namespace: gateway
+spec:
+  secretName: wildcard-home-tls
+  dnsNames:
+    - "*.home.green-tech-hub.com"
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-staging
