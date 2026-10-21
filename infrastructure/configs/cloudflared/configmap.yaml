@@ -19,6 +19,9 @@ data:
     credentials-file: /etc/cloudflared/creds/credentials.json
     metrics: 0.0.0.0:2000
     no-autoupdate: true
+    # The site network drops outbound UDP 7844, so QUIC never connects; with
+    # the default (auto) each QUIC attempt burns ~10 s before falling back.
+    protocol: http2
     ingress:
       - hostname: whoami.green-tech-hub.com
         service: https://cilium-gateway-homelab.gateway.svc.cluster.local:443

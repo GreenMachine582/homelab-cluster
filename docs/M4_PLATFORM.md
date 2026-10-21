@@ -88,8 +88,11 @@ Notes:
 
 - **Public whoami:** it echoes request headers and internal IPs to anyone. It's there for the M4 exit test; remove
   its tunnel rule and CNAME (or put it behind Cloudflare Access) once M4 is done.
-- **cloudflared placement:** it must run on an Envoy node to reach the Gateway, so both replicas sit on rpi-03. If
-  rpi-03 is down, public access is down.
+- **cloudflared placement:** it must run on an Envoy node to reach the Gateway, so its one replica sits on rpi-03.
+  If rpi-03 is down, public access is down.
+- **cloudflared protocol:** the site network drops outbound UDP 7844, so QUIC fails. The tunnel is pinned to
+  `protocol: http2` over TCP 7844, which cloudflared's own pre-check also recommends. If the site firewall ever
+  allows UDP 7844, the pin can go.
 
 - **Agent restart:** PR 2 changes `cilium-config`, so with `rollOutCiliumPods` every agent restarts once, a
   few seconds of pod-network interruption per node. Merge it when nothing important is running (true until M6).
