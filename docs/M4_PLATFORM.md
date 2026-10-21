@@ -31,7 +31,7 @@ here as it lands.
 | 2 | homelab-cluster | **Gateway API + L2 announcements**: Gateway API v1.6.1 CRDs imported from upstream (GitRepository pinned by commit, applied by a service account limited to CRDs and admission policies); Cilium `gatewayAPI.enabled`, `l2announcements.enabled`, `externalIPs.enabled`, a higher API client rate limit. Restarts the Cilium agents once | — | [#12](https://github.com/GreenMachine582/homelab-cluster/pull/12) |
 | 3 | homelab-cluster | **`infrastructure-configs` Kustomization + `local-nvme` StorageClass** | — | [#8](https://github.com/GreenMachine582/homelab-cluster/pull/8) |
 | 4 | homelab-cluster | **LB-IPAM pool + L2 announcement policy** (`infrastructure/configs/cilium/`) | 2, 3; DHCP pool shrunk to `.30–.239` (done) | [#9](https://github.com/GreenMachine582/homelab-cluster/pull/9) |
-| 5 | homelab-cluster | **ClusterIssuers** (`letsencrypt-staging`, `letsencrypt`) with the Cloudflare token as a SOPS secret | Cloudflare API token, scoped to Zone:DNS:Edit on `green-tech-hub.com` | To do |
+| 5 | homelab-cluster | **ClusterIssuers** (`letsencrypt-staging`, `letsencrypt`) with the Cloudflare token as a SOPS secret | Cloudflare API token, scoped to Zone:DNS:Edit on `green-tech-hub.com` (done) | [#14](https://github.com/GreenMachine582/homelab-cluster/pull/14) |
 | 6 | homelab-cluster | **Gateway**: namespace, wildcard `Certificate`, `Gateway` with HTTPS + redirect, test app `whoami` with an `HTTPRoute` | 2, 4, 5 | To do |
 | 7 | HomeLab | **PC hosts entries** for `*.home.green-tech-hub.com` names → Gateway IP (`k8s_client`) | 6 (the IP) | To do |
 | 8 | homelab-cluster | **cloudflared**: Deployment, config with ingress rules, SOPS tunnel credentials; public `whoami.green-tech-hub.com` | Tunnel created (`cloudflared tunnel create homelab`), DNS CNAME | To do |
@@ -43,12 +43,13 @@ Order: 1, 2 and 3 can merge in any order. Then 4, and 5 once the token exists. T
 
 ## What's needed from you
 
-1. **A Cloudflare API token:**
+1. **A Cloudflare API token** (done, 21 Oct 2026):
    - Permissions: Zone → DNS → Edit, plus Zone → Zone → Read.
    - Zone resources: only `green-tech-hub.com`.
-   - Encrypt it into the SOPS secret yourself (PR 5 has the command). It never goes in chat or plain text.
+   - Stored only as `infrastructure/configs/cert-manager/cloudflare-api-token.sops.yaml`. Recreate or rotate it
+     with [SECRETS.md](SECRETS.md).
 2. **A tunnel:** `cloudflared tunnel login` and `cloudflared tunnel create homelab` on the PC. The credentials
-   JSON gets encrypted the same way.
+   JSON gets encrypted the same way, and gets an entry in [SECRETS.md](SECRETS.md).
 3. **A drive for backups**, attached to rpi-01 or rpi-02.
 
 ## Things to watch

@@ -1,0 +1,79 @@
+# Secrets
+
+Every SOPS-encrypted file in this repo, what it holds, where the value comes from, and how to recreate it. A PR
+that adds or changes a `*.sops.yaml` updates this file in the same PR.
+
+## How encryption works here
+
+- `.sops.yaml` holds the age **public** key and encrypts only `data` / `stringData`. Encrypting needs only that,
+  so anyone with the repo can (re)create a secret.
+- Decrypting or editing needs the age **private** key at `~/.config/sops/age/keys.txt` in WSL (HomeLab
+  `sops_age_key_file`). Flux has its own copy as the `sops-age` secret in `flux-system` (HomeLab
+  `playbooks/flux_bootstrap.yml`).
+- If the private key is lost, nothing here can be decrypted. Re-issue every value below, generate a new age key,
+  put its public key in `.sops.yaml` (and HomeLab `sops_age_recipient`), re-run `flux_bootstrap.yml`, and
+  recreate each file.
+
+## Recreating a secret
+
+Run in WSL, from the root of the **Windows (OneDrive) clone**, on a branch made there. Commits are signed from
+Windows, and WSL can't sign:
+
+```bash
+cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
+```
+
+The value is read at a hidden prompt and only goes through a pipe, so it never lands on disk or in shell history:
+
+```bash
+read -rs VALUE; echo        # paste the value, press Enter (nothing is shown)
+echo ${#VALUE}              # length only; 0 means nothing was stored, run read again
+```
+
+Then build the Secret and encrypt it straight into place (`f`, the name, namespace and key come from the entry
+below):
+
+```bash
+kubectl create secret generic <name> -n <namespace> \
+  --from-literal=<key>="$VALUE" --dry-run=client -o yaml \
+| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
+unset VALUE
+grep -c 'ENC\[' "$f"        # 2 or more: the value plus the sops MAC
+```
+
+To change a single value later instead: `sops "$f"` opens it decrypted in your editor and re-encrypts on save
+(needs the private key).
+
+Check the result has no plaintext before committing: every value under `data:` must be `ENC[...]`.
+
+## Secret inventory
+
+### `infrastructure/configs/cert-manager/cloudflare-api-token.sops.yaml`
+
+| | |
+|---|---|
+| Secret | `cloudflare-api-token` in `cert-manager`, key `api-token` |
+| Used by | ClusterIssuers `letsencrypt-staging` and `letsencrypt` (DNS-01) |
+| Source | Cloudflare dashboard → My Profile → API Tokens → Create Token → Custom token |
+| Scope | Permissions: Zone · DNS · Edit, and Zone · Zone · Read. Zone resources: Include · Specific zone · `green-tech-hub.com`. No client IP filter, no expiry |
+| Created | 21 Oct 2026 ([#14](https://github.com/GreenMachine582/homelab-cluster/pull/14)) |
+
+Check the token before encrypting it (after the `read`):
+
+```bash
+curl -s -H "Authorization: Bearer $VALUE" https://api.cloudflare.com/client/v4/user/tokens/verify
+# expect "success":true and "status":"active"
+```
+
+Then:
+
+```bash
+f=infrastructure/configs/cert-manager/cloudflare-api-token.sops.yaml
+kubectl create secret generic cloudflare-api-token -n cert-manager \
+  --from-literal=api-token="$VALUE" --dry-run=client -o yaml \
+| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
+unset VALUE
+```
+
+**Rotate:** create a new token, recreate the file as above, PR and merge, wait for
+`kubectl get clusterissuers` to show both Ready, then delete the old token in Cloudflare.
