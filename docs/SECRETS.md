@@ -111,3 +111,25 @@ create `homelab2`, route its hostnames (`cloudflared tunnel route dns --overwrit
 
 `~/.cloudflared/cert.pem` is account-level: it can create and delete tunnels and DNS records in the zone. It isn't
 in git. Keep it at mode 600 in WSL, or delete it and run `cloudflared tunnel login` again when needed.
+
+### `infrastructure/configs/flux-notifications/discord-webhook.sops.yaml`
+
+| | |
+|---|---|
+| Secret | `discord-webhook` in `flux-system`, key `address` |
+| Used by | Flux Provider `discord`, Alert `homelab-deploys` (deploy notifications) |
+| Source | Discord: the `#homelab-deploys` channel → Edit Channel → Integrations → Webhooks → New Webhook → Copy Webhook URL |
+| Created | 21 Oct 2026 |
+
+```bash
+cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
+read -rs VALUE; echo; echo ${#VALUE}      # paste the webhook URL
+f=infrastructure/configs/flux-notifications/discord-webhook.sops.yaml
+kubectl create secret generic discord-webhook -n flux-system \
+  --from-literal=address="$VALUE" --dry-run=client -o yaml \
+| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
+unset VALUE
+grep -c 'ENC\[' "$f"
+```
+
+**Rotate:** delete the webhook in Discord (that revokes it at once), make a new one, recreate the file as above.

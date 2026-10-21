@@ -116,7 +116,7 @@ homelab-cluster/
 
 | Component             | Purpose                                         | Namespace         |
 |-----------------------|-------------------------------------------------|-------------------|
-| Flux                  | GitOps: syncs this repo, decrypts SOPS          | `flux-system`     |
+| Flux                  | GitOps: syncs this repo, decrypts SOPS; posts each pulled commit and applied change to Discord (`infrastructure/configs/flux-notifications`) | `flux-system`     |
 | Cilium                | CNI, kube-proxy replacement, Gateway API, LB-IPAM | `kube-system`   |
 | cert-manager          | TLS certificates                                | `cert-manager`    |
 | kube-prometheus-stack | Prometheus, Grafana, Alertmanager               | `monitoring`      |

@@ -88,6 +88,9 @@ To fix a failing commit: `git commit --amend` (last commit) or `git rebase -i ma
 
 ## After merging
 
+Discord's `#homelab-deploys` shows when Flux pulls the merge commit and what each Kustomization and HelmRelease
+then applies, or why it failed. To check by hand, or to skip the poll interval:
+
 ```bash
 flux reconcile kustomization flux-system --with-source   # don't wait for the poll
 flux get kustomizations                                   # all Ready at the merge commit
