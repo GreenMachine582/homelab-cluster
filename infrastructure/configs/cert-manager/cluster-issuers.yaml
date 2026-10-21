@@ -1,0 +1,48 @@
+# Let's Encrypt issuers, DNS-01 via Cloudflare (M4). Use letsencrypt-staging
+# first for a new certificate, then switch to letsencrypt: the production
+# rate limits are tight. See docs/M4_PLATFORM.md.
+#
+# The Cloudflare token (cloudflare-api-token.sops.yaml) is scoped to Zone:DNS
+# Edit + Zone Read on green-tech-hub.com. A ClusterIssuer reads its secrets
+# from cert-manager's own namespace, so the token lives there.
+#
+# No email: Let's Encrypt no longer sends expiry mails, and this repo is
+# public.
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - selector:
+          dnsZones:
+            - green-tech-hub.com
+        dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+      - selector:
+          dnsZones:
+            - green-tech-hub.com
+        dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
