@@ -1,0 +1,28 @@
+---
+# The locally managed "homelab" tunnel (M4): ingress rules live here, not in
+# the Cloudflare dashboard. Each public hostname also needs its DNS record:
+#   cloudflared tunnel route dns homelab <name>.green-tech-hub.com
+# See docs/M4_PLATFORM.md "Cloudflare setup".
+#
+# Public <name>.green-tech-hub.com goes to the shared Gateway as the LAN name
+# <name>.home.green-tech-hub.com: that SNI matches the wildcard certificate
+# (so TLS to the origin is verified), and that Host matches the service's
+# existing HTTPRoute. The Gateway, certificate and routes don't change.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: cloudflared
+data:
+  config.yaml: |
+    tunnel: 0906ae8b-a6d6-49d7-80f4-6bc4d724fcca
+    credentials-file: /etc/cloudflared/creds/credentials.json
+    metrics: 0.0.0.0:2000
+    no-autoupdate: true
+    ingress:
+      - hostname: whoami.green-tech-hub.com
+        service: https://cilium-gateway-homelab.gateway.svc.cluster.local:443
+        originRequest:
+          originServerName: whoami.home.green-tech-hub.com
+          httpHostHeader: whoami.home.green-tech-hub.com
+      - service: http_status:404

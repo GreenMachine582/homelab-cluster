@@ -77,3 +77,37 @@ unset VALUE
 
 **Rotate:** create a new token, recreate the file as above, PR and merge, wait for
 `kubectl get clusterissuers` to show both Ready, then delete the old token in Cloudflare.
+
+### `infrastructure/configs/cloudflared/tunnel-credentials.sops.yaml`
+
+| | |
+|---|---|
+| Secret | `cloudflared-tunnel-credentials` in `cloudflared`, key `credentials.json` |
+| Used by | the cloudflared Deployment (the `homelab` tunnel) |
+| Source | `cloudflared tunnel create homelab` writes `~/.cloudflared/<TUNNEL_ID>.json` in WSL |
+| Needs | the cloudflared CLI (HomeLab `controller.yml -K --tags cloudflared`) and `~/.cloudflared/cert.pem` from `cloudflared tunnel login` |
+| Created | 21 Oct 2026 |
+
+A file this time, so use `--from-file` instead of `read` + `--from-literal`:
+
+```bash
+cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
+f=infrastructure/configs/cloudflared/tunnel-credentials.sops.yaml
+kubectl create secret generic cloudflared-tunnel-credentials -n cloudflared \
+  --from-file=credentials.json="$HOME/.cloudflared/<TUNNEL_ID>.json" --dry-run=client -o yaml \
+| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
+grep -c 'ENC\[' "$f"
+```
+
+**Lost the JSON?** Regenerate it from the tunnel (needs `cert.pem`), then encrypt as above:
+
+```bash
+cloudflared tunnel token --cred-file "$HOME/.cloudflared/<TUNNEL_ID>.json" homelab
+```
+
+**Rotate** (new tunnel secret): `cloudflared tunnel delete homelab` breaks public access until the new one is up, so
+create `homelab2`, route its hostnames (`cloudflared tunnel route dns --overwrite-dns homelab2 <host>`), update
+`tunnel:` in `configmap.yaml` and this secret in one PR, then delete the old tunnel.
+
+`~/.cloudflared/cert.pem` is account-level: it can create and delete tunnels and DNS records in the zone. It isn't
+in git. Keep it at mode 600 in WSL, or delete it and run `cloudflared tunnel login` again when needed.
