@@ -1,8 +1,8 @@
 ---
 # LoadBalancer IPs on the site LAN (192.168.50.0/24), for the Gateway and any
 # other LoadBalancer Service. Must stay outside the site router's DHCP pool
-# and clear of the nodes' static IPs (.10, .11, .12, .21).
-# TODO before merge: confirm the router's DHCP pool ends below .240.
+# and clear of the nodes' static IPs (.10, .11, .12, .21). The router's DHCP
+# pool is .30–.239 (shrunk from .2–.254 on 21 Oct 2026 to make room).
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
