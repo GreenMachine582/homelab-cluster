@@ -1,0 +1,77 @@
+# Gateway API CRDs, imported from upstream instead of copied into this repo.
+# Cilium 1.20 needs the v1.6.1 standard channel; upstream's config/crd is that
+# set: 10 CRDs plus the safe-upgrades ValidatingAdmissionPolicy, which blocks
+# older or experimental CRDs being applied over them.
+#
+# Pinned by commit, not tag: tags can move, a commit can't, so only what this
+# PR reviewed can reach the cluster. The Kustomization applies it as
+# gateway-api-crds, which may only manage CRDs and admission policies.
+#
+# Bump in the same PR as Cilium, after reading Cilium's upgrade notes: change
+# ref.commit (and its tag comment) to the new release's commit.
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: gateway-api
+  namespace: flux-system
+spec:
+  interval: 1h0m0s
+  url: https://github.com/kubernetes-sigs/gateway-api
+  ref:
+    commit: 8bb74df00e56ec8f944d48c25e6c1c9c2f6848e3 # v1.6.1
+  # Only config/crd/, without the experimental channel.
+  ignore: |
+    /*
+    !/config/
+    /config/*
+    !/config/crd/
+    /config/crd/experimental/
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-api-crds
+  namespace: flux-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gateway-api-crds
+rules:
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [admissionregistration.k8s.io]
+    resources: [validatingadmissionpolicies, validatingadmissionpolicybindings]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gateway-api-crds
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gateway-api-crds
+subjects:
+  - kind: ServiceAccount
+    name: gateway-api-crds
+    namespace: flux-system
+---
+# prune: false. Deleting the CRDs would delete every Gateway and route.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: gateway-api-crds
+  namespace: flux-system
+spec:
+  interval: 1h0m0s
+  path: ./config/crd
+  prune: false
+  serviceAccountName: gateway-api-crds
+  sourceRef:
+    kind: GitRepository
+    name: gateway-api
+  timeout: 5m0s
+  wait: true

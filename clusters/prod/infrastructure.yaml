@@ -1,5 +1,7 @@
 # Platform layer: infrastructure/controllers (Cilium now; cert-manager and the
-# rest in M4). apps waits for it (dependsOn in apps.yaml).
+# rest in M4). apps waits for it (dependsOn in apps.yaml). It waits for the
+# Gateway API CRDs (gateway-api.yaml): Cilium's operator only looks for them
+# when it starts.
 #
 # prune: false. Cilium is the CNI: removing this Kustomization or a file
 # under it must never uninstall it. Revisit when M4 adds controllers that
@@ -11,6 +13,8 @@ metadata:
   name: infrastructure
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: gateway-api-crds
   interval: 10m0s
   path: ./infrastructure/controllers
   prune: false
