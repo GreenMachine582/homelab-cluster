@@ -34,10 +34,11 @@ here as it lands.
 | 5 | homelab-cluster | **ClusterIssuers** (`letsencrypt-staging`, `letsencrypt`) with the Cloudflare token as a SOPS secret | Cloudflare API token, scoped to Zone:DNS:Edit on `green-tech-hub.com` (done) | [#14](https://github.com/GreenMachine582/homelab-cluster/pull/14) |
 | 6 | homelab-cluster | **Gateway**: namespace, wildcard `Certificate`, `Gateway` with HTTPS + redirect, test app `whoami` with an `HTTPRoute`. Proved on `letsencrypt-staging`, then switched to `letsencrypt` | 2, 4, 5 | [#15](https://github.com/GreenMachine582/homelab-cluster/pull/15), [#16](https://github.com/GreenMachine582/homelab-cluster/pull/16) |
 | 7 | both | **LAN names**: the `*.home` A record in Cloudflare (manual, see [Cloudflare setup](#cloudflare-setup-manual)); HomeLab `cluster_status.yml` checks resolution and HTTPS from the controller | 6 (the IP) | [#17](https://github.com/GreenMachine582/homelab-cluster/pull/17), HomeLab [#9](https://github.com/GreenMachine582/HomeLab/pull/9), [#10](https://github.com/GreenMachine582/HomeLab/pull/10) |
-| 8 | both | **cloudflared**: Deployment, config with ingress rules, SOPS tunnel credentials; public `whoami.green-tech-hub.com`. HomeLab installs the pinned CLI on the controller | Tunnel created (`cloudflared tunnel create homelab`), DNS CNAME | HomeLab [#11](https://github.com/GreenMachine582/HomeLab/pull/11); cluster side in progress |
+| 8 | both | **cloudflared**: Deployment, config with ingress rules, SOPS tunnel credentials; public `whoami.green-tech-hub.com`. HomeLab installs the pinned CLI on the controller | Tunnel created (`cloudflared tunnel create homelab`), DNS CNAME | HomeLab [#11](https://github.com/GreenMachine582/HomeLab/pull/11); [#18](https://github.com/GreenMachine582/homelab-cluster/pull/18), [#19](https://github.com/GreenMachine582/homelab-cluster/pull/19) (HTTP/2) |
 | 9 | HomeLab | **Backup target**: role for the external drive (mount by UUID, NFS export to the site LAN), `etcd_backup` copies snapshots there | Drive attached to a Pi | Waiting for hardware |
 | — | homelab-cluster | **Block remote kustomize bases** (`--no-remote-bases=true`): external content only through pinned Flux sources | — | [#10](https://github.com/GreenMachine582/homelab-cluster/pull/10) |
-| 10 | both | **Docs + M4 exit**: runbook for adding a service behind the Gateway; M4 marked done | 1–9 | To do |
+| 10 | both | **Docs + M4 exit**: runbook for adding a service behind the Gateway; M4 marked done | 1–9 | Runbook: [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). M4 exit waits for 9 |
+| — | homelab-cluster | **Deploy notifications**: Flux posts each pulled commit and applied change to Discord `#homelab-deploys` | Discord webhook | [#20](https://github.com/GreenMachine582/homelab-cluster/pull/20) |
 
 Order: 1, 2 and 3 can merge in any order. Then 4, and 5 once the token exists. Then 6 → 7 → 8. 9 is independent.
 Steps done by hand in Cloudflare are listed under [Cloudflare setup](#cloudflare-setup-manual).
@@ -50,10 +51,11 @@ Steps done by hand in Cloudflare are listed under [Cloudflare setup](#cloudflare
    - Stored only as `infrastructure/configs/cert-manager/cloudflare-api-token.sops.yaml`. Recreate or rotate it
      with [SECRETS.md](SECRETS.md).
 2. **The `*.home` DNS record** (done, 21 Oct 2026). See [Cloudflare setup](#cloudflare-setup-manual).
-3. **A tunnel:** `cloudflared tunnel login`, `cloudflared tunnel create homelab` and
+3. **A tunnel** (done, 21 Oct 2026): `cloudflared tunnel login`, `cloudflared tunnel create homelab` and
    `cloudflared tunnel route dns homelab whoami.green-tech-hub.com` in WSL. The credentials JSON is encrypted as
    in [SECRETS.md](SECRETS.md).
-4. **A drive for backups**, attached to rpi-01 or rpi-02.
+4. **A Discord webhook** for `#homelab-deploys` (done, 21 Oct 2026). See [SECRETS.md](SECRETS.md).
+5. **A drive for backups**, attached to rpi-01 or rpi-02. Still to do; the M4 exit test needs it.
 
 ## Cloudflare setup (manual)
 
@@ -78,11 +80,8 @@ Notes:
   both give `192.168.50.240`. If only the local resolver returns nothing, it's dropping private-IP answers
   (DNS-rebind protection). The home ASUS router doesn't (checked 21 Oct 2026).
 
-**Publishing a service** (it already has an HTTPRoute for `<name>.home.green-tech-hub.com`):
-1. Add an ingress rule to `infrastructure/configs/cloudflared/configmap.yaml`, above the 404 catch-all. Copy the
-   whoami rule and change both `<name>` values. Bump `homelab/config-rev` in `deployment.yaml` so the pods restart.
-2. `cloudflared tunnel route dns homelab <name>.green-tech-hub.com` in WSL, and add the record to the table above.
-3. Removing one: delete the rule, then delete its CNAME in the dashboard.
+**Publishing or removing a service:** see [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md) §6 and §8. Add every record
+created there to the table above.
 
 ## Things to watch
 

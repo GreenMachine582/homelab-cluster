@@ -99,7 +99,7 @@ homelab-cluster/
       uptime-kuma/
     prod/                     # Kustomize overlays + SOPS-encrypted secrets per service
 
-  docs/                       # Runbooks: bootstrap, DR, adding a service
+  docs/                       # ADDING_A_SERVICE.md, SECRETS.md, M4_PLATFORM.md (plan + Cloudflare setup)
 ```
 
 **Conventions**
@@ -228,8 +228,13 @@ kustomize build apps/prod/<service>
 
 **Changes:** branch, signed Conventional Commits, PR. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Adding a service:** create `apps/base/<service>/`, add an overlay in `apps/prod/<service>/` with any `*.sops.yaml`
-secrets, reference it from `apps/prod/kustomization.yaml`, open a PR.
+**Adding a service:** follow [docs/ADDING_A_SERVICE.md](docs/ADDING_A_SERVICE.md). In short:
+- create `apps/base/<service>/`
+- add an overlay in `apps/prod/<service>/` with any `*.sops.yaml` secrets
+- attach an HTTPRoute to the shared Gateway
+- reference it from `apps/prod/kustomization.yaml`
+- optionally, publish it through the tunnel
+- open a PR
 
 ---
 

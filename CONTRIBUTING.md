@@ -80,6 +80,7 @@ To fix a failing commit: `git commit --amend` (last commit) or `git rebase -i ma
 - A PR that adds or changes a `*.sops.yaml` adds or updates its entry in `docs/SECRETS.md`: what it holds, where the
   value comes from, and the commands to recreate it.
 - Helm charts and images are pinned to exact versions.
+- New services follow [docs/ADDING_A_SERVICE.md](docs/ADDING_A_SERVICE.md) (layout, Gateway route, tunnel).
 - Workloads are multi-arch and set resource requests and limits. Anything needing L7/FQDN/TLS policy or the Gateway
   selects `homelab/l7-proxy: supported`.
 - For a Helm release Flux adopts or changes, put the values diff against the deployed release in the PR. HomeLab's
