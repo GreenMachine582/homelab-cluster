@@ -32,7 +32,7 @@ here as it lands.
 | 3 | homelab-cluster | **`infrastructure-configs` Kustomization + `local-nvme` StorageClass** | — | [#8](https://github.com/GreenMachine582/homelab-cluster/pull/8) |
 | 4 | homelab-cluster | **LB-IPAM pool + L2 announcement policy** (`infrastructure/configs/cilium/`) | 2, 3; DHCP pool shrunk to `.30–.239` (done) | [#9](https://github.com/GreenMachine582/homelab-cluster/pull/9) |
 | 5 | homelab-cluster | **ClusterIssuers** (`letsencrypt-staging`, `letsencrypt`) with the Cloudflare token as a SOPS secret | Cloudflare API token, scoped to Zone:DNS:Edit on `green-tech-hub.com` (done) | [#14](https://github.com/GreenMachine582/homelab-cluster/pull/14) |
-| 6 | homelab-cluster | **Gateway**: namespace, wildcard `Certificate`, `Gateway` with HTTPS + redirect, test app `whoami` with an `HTTPRoute`. Cert starts on `letsencrypt-staging`; a follow-up switches it to `letsencrypt` | 2, 4, 5 | In review |
+| 6 | homelab-cluster | **Gateway**: namespace, wildcard `Certificate`, `Gateway` with HTTPS + redirect, test app `whoami` with an `HTTPRoute`. Proved on `letsencrypt-staging`, then switched to `letsencrypt` | 2, 4, 5 | [#15](https://github.com/GreenMachine582/homelab-cluster/pull/15), production cert in review |
 | 7 | HomeLab | **PC hosts entries** for `*.home.green-tech-hub.com` names → Gateway IP (`k8s_client`) | 6 (the IP) | To do |
 | 8 | homelab-cluster | **cloudflared**: Deployment, config with ingress rules, SOPS tunnel credentials; public `whoami.green-tech-hub.com` | Tunnel created (`cloudflared tunnel create homelab`), DNS CNAME | To do |
 | 9 | HomeLab | **Backup target**: role for the external drive (mount by UUID, NFS export to the site LAN), `etcd_backup` copies snapshots there | Drive attached to a Pi | Waiting for hardware |

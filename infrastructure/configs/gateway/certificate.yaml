@@ -2,9 +2,10 @@
 # The wildcard certificate for LAN services, on the Gateway's HTTPS listener.
 # Issued by DNS-01 (infrastructure/configs/cert-manager), so no inbound ports.
 #
-# Starts on letsencrypt-staging, to prove the Cloudflare token and DNS-01
-# without spending production rate limits. Switch issuerRef to letsencrypt
-# once it shows Ready; cert-manager then reissues into the same Secret.
+# Production Let's Encrypt. Staging proved the Cloudflare token and DNS-01
+# first (#15); do the same for any new certificate, since production allows
+# only 5 failed validations per hostname per hour. Changing issuerRef
+# reissues into the same Secret, and the Gateway picks it up.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -17,4 +18,4 @@ spec:
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer
-    name: letsencrypt-staging
+    name: letsencrypt
