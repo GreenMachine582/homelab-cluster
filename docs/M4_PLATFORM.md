@@ -33,8 +33,8 @@ here as it lands.
 | 4 | homelab-cluster | **LB-IPAM pool + L2 announcement policy** (`infrastructure/configs/cilium/`) | 2, 3; DHCP pool shrunk to `.30–.239` (done) | [#9](https://github.com/GreenMachine582/homelab-cluster/pull/9) |
 | 5 | homelab-cluster | **ClusterIssuers** (`letsencrypt-staging`, `letsencrypt`) with the Cloudflare token as a SOPS secret | Cloudflare API token, scoped to Zone:DNS:Edit on `green-tech-hub.com` (done) | [#14](https://github.com/GreenMachine582/homelab-cluster/pull/14) |
 | 6 | homelab-cluster | **Gateway**: namespace, wildcard `Certificate`, `Gateway` with HTTPS + redirect, test app `whoami` with an `HTTPRoute`. Proved on `letsencrypt-staging`, then switched to `letsencrypt` | 2, 4, 5 | [#15](https://github.com/GreenMachine582/homelab-cluster/pull/15), [#16](https://github.com/GreenMachine582/homelab-cluster/pull/16) |
-| 7 | both | **LAN names**: the `*.home` A record in Cloudflare (manual, see [Cloudflare setup](#cloudflare-setup-manual)); HomeLab `cluster_status.yml` checks resolution and HTTPS from the controller | 6 (the IP) | Record done; docs + check in review |
-| 8 | homelab-cluster | **cloudflared**: Deployment, config with ingress rules, SOPS tunnel credentials; public `whoami.green-tech-hub.com` | Tunnel created (`cloudflared tunnel create homelab`), DNS CNAME | To do |
+| 7 | both | **LAN names**: the `*.home` A record in Cloudflare (manual, see [Cloudflare setup](#cloudflare-setup-manual)); HomeLab `cluster_status.yml` checks resolution and HTTPS from the controller | 6 (the IP) | [#17](https://github.com/GreenMachine582/homelab-cluster/pull/17), HomeLab [#9](https://github.com/GreenMachine582/HomeLab/pull/9), [#10](https://github.com/GreenMachine582/HomeLab/pull/10) |
+| 8 | both | **cloudflared**: Deployment, config with ingress rules, SOPS tunnel credentials; public `whoami.green-tech-hub.com`. HomeLab installs the pinned CLI on the controller | Tunnel created (`cloudflared tunnel create homelab`), DNS CNAME | HomeLab [#11](https://github.com/GreenMachine582/HomeLab/pull/11); cluster side in progress |
 | 9 | HomeLab | **Backup target**: role for the external drive (mount by UUID, NFS export to the site LAN), `etcd_backup` copies snapshots there | Drive attached to a Pi | Waiting for hardware |
 | — | homelab-cluster | **Block remote kustomize bases** (`--no-remote-bases=true`): external content only through pinned Flux sources | — | [#10](https://github.com/GreenMachine582/homelab-cluster/pull/10) |
 | 10 | both | **Docs + M4 exit**: runbook for adding a service behind the Gateway; M4 marked done | 1–9 | To do |
@@ -50,8 +50,9 @@ Steps done by hand in Cloudflare are listed under [Cloudflare setup](#cloudflare
    - Stored only as `infrastructure/configs/cert-manager/cloudflare-api-token.sops.yaml`. Recreate or rotate it
      with [SECRETS.md](SECRETS.md).
 2. **The `*.home` DNS record** (done, 21 Oct 2026). See [Cloudflare setup](#cloudflare-setup-manual).
-3. **A tunnel:** `cloudflared tunnel login` and `cloudflared tunnel create homelab` on the PC. The credentials
-   JSON gets encrypted the same way, and gets an entry in [SECRETS.md](SECRETS.md).
+3. **A tunnel:** `cloudflared tunnel login`, `cloudflared tunnel create homelab` and
+   `cloudflared tunnel route dns homelab whoami.green-tech-hub.com` in WSL. The credentials JSON is encrypted as
+   in [SECRETS.md](SECRETS.md).
 4. **A drive for backups**, attached to rpi-01 or rpi-02.
 
 ## Cloudflare setup (manual)
@@ -64,7 +65,8 @@ Update this table whenever the dashboard changes.
 | API token | My Profile → API Tokens | Custom token: Zone · DNS · Edit and Zone · Zone · Read, zone `green-tech-hub.com` only. Recreate: [SECRETS.md](SECRETS.md) | cert-manager DNS-01 (#14) |
 | LAN wildcard record | green-tech-hub.com → DNS → Records | Type `A`, name `*.home`, IPv4 `192.168.50.240` (the Gateway, `infrastructure/configs/gateway/gateway.yaml`), **DNS only** (grey cloud), TTL Auto | Every `*.home.green-tech-hub.com` service |
 | Apex record + tunnel route | DNS → Records; Zero Trust → Networks → Tunnels | Pre-existing, proxied apex `green-tech-hub.com` routed through a tunnel to `https://localhost:8080`. Not managed by this repo | Outside the cluster |
-| `homelab` tunnel | Zero Trust → Networks → Tunnels | To do (PR 8): locally managed, created with `cloudflared tunnel create homelab` | cloudflared |
+| `homelab` tunnel | Zero Trust → Networks → Tunnels | Locally managed (the dashboard shows it but its ingress rules live in `infrastructure/configs/cloudflared/configmap.yaml`). ID `0906ae8b-a6d6-49d7-80f4-6bc4d724fcca`. Created in WSL with `cloudflared tunnel login` (writes `~/.cloudflared/cert.pem`, pick `green-tech-hub.com`) then `cloudflared tunnel create homelab`. Credentials: [SECRETS.md](SECRETS.md) | cloudflared |
+| Public `whoami` record | DNS → Records | `CNAME` `whoami` → `0906ae8b-a6d6-49d7-80f4-6bc4d724fcca.cfargotunnel.com`, **proxied**. Created with `cloudflared tunnel route dns homelab whoami.green-tech-hub.com` | Public whoami (M4 exit test) |
 
 Notes:
 - The A record must stay **DNS only**. Proxied, Cloudflare would answer with its own IPs and couldn't reach a
@@ -76,7 +78,18 @@ Notes:
   both give `192.168.50.240`. If only the local resolver returns nothing, it's dropping private-IP answers
   (DNS-rebind protection). The home ASUS router doesn't (checked 21 Oct 2026).
 
+**Publishing a service** (it already has an HTTPRoute for `<name>.home.green-tech-hub.com`):
+1. Add an ingress rule to `infrastructure/configs/cloudflared/configmap.yaml`, above the 404 catch-all. Copy the
+   whoami rule and change both `<name>` values. Bump `homelab/config-rev` in `deployment.yaml` so the pods restart.
+2. `cloudflared tunnel route dns homelab <name>.green-tech-hub.com` in WSL, and add the record to the table above.
+3. Removing one: delete the rule, then delete its CNAME in the dashboard.
+
 ## Things to watch
+
+- **Public whoami:** it echoes request headers and internal IPs to anyone. It's there for the M4 exit test; remove
+  its tunnel rule and CNAME (or put it behind Cloudflare Access) once M4 is done.
+- **cloudflared placement:** it must run on an Envoy node to reach the Gateway, so both replicas sit on rpi-03. If
+  rpi-03 is down, public access is down.
 
 - **Agent restart:** PR 2 changes `cilium-config`, so with `rollOutCiliumPods` every agent restarts once, a
   few seconds of pod-network interruption per node. Merge it when nothing important is running (true until M6).
