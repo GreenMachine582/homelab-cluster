@@ -1,0 +1,34 @@
+---
+# Tells Discord when a merge reaches the cluster:
+# - GitRepository: "stored artifact for revision main@sha1:…" when Flux pulls
+#   a new commit.
+# - Kustomizations: what they applied (created/configured/deleted), or why
+#   they failed. A reconcile with no changes sends nothing.
+# - HelmReleases: installs, upgrades, failures and rollbacks.
+# To silence it for a while: spec.suspend: true here (in a PR), or
+# `flux suspend alert homelab-deploys -n flux-system` until the next sync.
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: homelab-deploys
+  namespace: flux-system
+spec:
+  providerRef:
+    name: discord
+  eventSeverity: info
+  eventMetadata:
+    cluster: homelab-prod
+  eventSources:
+    - kind: GitRepository
+      name: flux-system
+    - kind: Kustomization
+      name: "*"
+    - kind: HelmRelease
+      name: "*"
+      namespace: kube-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: cert-manager
+  # Routine, not news: dependsOn waits during a rollout.
+  exclusionList:
+    - "^Dependencies do not meet ready condition"
