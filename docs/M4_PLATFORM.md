@@ -15,7 +15,7 @@ here as it lands.
 | Domain | `green-tech-hub.com`, DNS on Cloudflare. LAN services under `*.home.green-tech-hub.com`; public services as `<name>.green-tech-hub.com` through the tunnel |
 | LAN certificates | Let's Encrypt via cert-manager, DNS-01 against Cloudflare. One wildcard `*.home.green-tech-hub.com` certificate on the Gateway. No inbound ports |
 | LAN hostnames | Hosts-file entries on the PC pointing at the Gateway IP (HomeLab `k8s_client`), until Pi-hole (backlog) |
-| LoadBalancer IPs | Cilium LB-IPAM, one small pool on the site LAN outside the router's DHCP pool, announced with Cilium L2 announcements (ARP) |
+| LoadBalancer IPs | Cilium LB-IPAM, pool `192.168.50.240–.250` on the site LAN, announced with Cilium L2 announcements (ARP). The router's DHCP pool was shrunk to `.30–.239` (21 Oct 2026) to make room; node static IPs sit below `.30` |
 | Where L2 answers | Only nodes labelled `homelab/l7-proxy=supported` (laptop-01, rpi-03). The Gateway's traffic goes through Envoy, which can't run on the Pi 4s |
 | Gateway | Cilium Gateway API (v1.6.1 CRDs, standard channel, imported by commit, not vendored), one shared `Gateway` in `gateway`, HTTPS listener with the wildcard cert, HTTP → HTTPS redirect |
 | Storage | `local-nvme` StorageClass (no provisioner, `WaitForFirstConsumer`, `Retain`). PVs are created per workload in M6, on rpi-03's `/mnt/nvme/k8s/<name>` |
@@ -30,7 +30,7 @@ here as it lands.
 | 1 | homelab-cluster | **cert-manager** controller (HelmRelease v1.21.2, CRDs managed by the chart) | — | [#6](https://github.com/GreenMachine582/homelab-cluster/pull/6) |
 | 2 | homelab-cluster | **Gateway API + L2 announcements**: Gateway API v1.6.1 CRDs imported from upstream (GitRepository pinned by commit, applied by a service account limited to CRDs and admission policies); Cilium `gatewayAPI.enabled`, `l2announcements.enabled`, `externalIPs.enabled`, a higher API client rate limit. Restarts the Cilium agents once | — | [#12](https://github.com/GreenMachine582/homelab-cluster/pull/12) |
 | 3 | homelab-cluster | **`infrastructure-configs` Kustomization + `local-nvme` StorageClass** | — | [#8](https://github.com/GreenMachine582/homelab-cluster/pull/8) |
-| 4 | homelab-cluster | **LB-IPAM pool + L2 announcement policy** (`infrastructure/configs/cilium/`) | The site router's DHCP pool, to confirm the range | [#9](https://github.com/GreenMachine582/homelab-cluster/pull/9) (draft, on #8) |
+| 4 | homelab-cluster | **LB-IPAM pool + L2 announcement policy** (`infrastructure/configs/cilium/`) | 2, 3; DHCP pool shrunk to `.30–.239` (done) | [#9](https://github.com/GreenMachine582/homelab-cluster/pull/9) |
 | 5 | homelab-cluster | **ClusterIssuers** (`letsencrypt-staging`, `letsencrypt`) with the Cloudflare token as a SOPS secret | Cloudflare API token, scoped to Zone:DNS:Edit on `green-tech-hub.com` | To do |
 | 6 | homelab-cluster | **Gateway**: namespace, wildcard `Certificate`, `Gateway` with HTTPS + redirect, test app `whoami` with an `HTTPRoute` | 2, 4, 5 | To do |
 | 7 | HomeLab | **PC hosts entries** for `*.home.green-tech-hub.com` names → Gateway IP (`k8s_client`) | 6 (the IP) | To do |
@@ -39,20 +39,17 @@ here as it lands.
 | — | homelab-cluster | **Block remote kustomize bases** (`--no-remote-bases=true`): external content only through pinned Flux sources | — | [#10](https://github.com/GreenMachine582/homelab-cluster/pull/10) |
 | 10 | both | **Docs + M4 exit**: runbook for adding a service behind the Gateway; M4 marked done | 1–9 | To do |
 
-Order: 1, 2 and 3 can merge in any order. Then 4 once the range is confirmed, and 5 once the token exists. Then 6
-→ 7 → 8. 9 is independent.
+Order: 1, 2 and 3 can merge in any order. Then 4, and 5 once the token exists. Then 6 → 7 → 8. 9 is independent.
 
 ## What's needed from you
 
-1. **The site router's DHCP pool.** PR 4 proposes `192.168.50.240–192.168.50.250`. Confirm it's outside the
-   pool and unused.
-2. **A Cloudflare API token:**
+1. **A Cloudflare API token:**
    - Permissions: Zone → DNS → Edit, plus Zone → Zone → Read.
    - Zone resources: only `green-tech-hub.com`.
    - Encrypt it into the SOPS secret yourself (PR 5 has the command). It never goes in chat or plain text.
-3. **A tunnel:** `cloudflared tunnel login` and `cloudflared tunnel create homelab` on the PC. The credentials
+2. **A tunnel:** `cloudflared tunnel login` and `cloudflared tunnel create homelab` on the PC. The credentials
    JSON gets encrypted the same way.
-4. **A drive for backups**, attached to rpi-01 or rpi-02.
+3. **A drive for backups**, attached to rpi-01 or rpi-02.
 
 ## Things to watch
 

@@ -1,0 +1,19 @@
+---
+# Answer ARP for LoadBalancer IPs from one node at a time (a lease). Only
+# nodes that run Envoy (homelab/l7-proxy=supported: laptop-01, rpi-03): the
+# Gateway's traffic is handled by the Envoy on the node that receives it,
+# and the Pi 4s can't run Envoy. Only the wired LAN interfaces, never
+# tailscale0.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: site-lan
+spec:
+  nodeSelector:
+    matchLabels:
+      homelab/l7-proxy: supported
+  interfaces:
+    - ^enp3s0$
+    - ^eth0$
+  loadBalancerIPs: true
+  externalIPs: false
