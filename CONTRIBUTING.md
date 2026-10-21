@@ -74,8 +74,11 @@ To fix a failing commit: `git commit --amend` (last commit) or `git rebase -i ma
 ## Before opening a PR
 
 - Render what you changed: `kubectl kustomize apps/prod/<service>` or `kubectl kustomize infrastructure/controllers`.
-- Secrets only in `*.sops.yaml`, encrypted (`sops --encrypt --in-place`) before the first commit. `.sops.yaml`
-  encrypts `data` and `stringData` only. Never commit a plaintext Secret, not even on a branch: the repo is public.
+- Secrets only in `*.sops.yaml`, encrypted through a pipe as in [docs/SECRETS.md](docs/SECRETS.md) before the
+  first commit. `.sops.yaml` encrypts `data` and `stringData` only. Never commit a plaintext Secret, not even on a
+  branch: the repo is public.
+- A PR that adds or changes a `*.sops.yaml` adds or updates its entry in `docs/SECRETS.md`: what it holds, where the
+  value comes from, and the commands to recreate it.
 - Helm charts and images are pinned to exact versions.
 - Workloads are multi-arch and set resource requests and limits. Anything needing L7/FQDN/TLS policy or the Gateway
   selects `homelab/l7-proxy: supported`.

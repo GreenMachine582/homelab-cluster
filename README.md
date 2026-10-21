@@ -132,15 +132,17 @@ Secrets are encrypted in git with [SOPS](https://github.com/getsops/sops) and [a
 Only `data` and `stringData` fields are encrypted, so resource names and structure stay readable in PRs.
 
 ```bash
-# Create a secret, then encrypt it in place
-kubectl create secret generic my-app --from-literal=PASSWORD=changeme \
-  --dry-run=client -o yaml > apps/prod/my-app/my-app.sops.yaml
-sops --encrypt --in-place apps/prod/my-app/my-app.sops.yaml
+# Create a secret, encrypting it through a pipe so the plaintext never touches disk
+f=apps/prod/my-app/my-app.sops.yaml
+kubectl create secret generic my-app --from-literal=PASSWORD="$VALUE" --dry-run=client -o yaml \
+| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
 
 # Edit an existing secret (decrypts in your editor, re-encrypts on save)
 sops apps/prod/my-app/my-app.sops.yaml
 ```
 
+- **[docs/SECRETS.md](docs/SECRETS.md)** lists every encrypted file, where its value comes from and how to
+  recreate it. Update it in the same PR as any `*.sops.yaml`.
 - The age **public** key is in `.sops.yaml`. The **private** key never enters this repo.
 - Flux decrypts using the `sops-age` secret in `flux-system`, created once at bootstrap.
 - The private key is kept offline in two places, one off-site. Losing it means every secret here is unreadable.

@@ -46,10 +46,10 @@ Order: 1, 2 and 3 can merge in any order. Then 4, and 5 once the token exists. T
 1. **A Cloudflare API token** (done, 21 Oct 2026):
    - Permissions: Zone → DNS → Edit, plus Zone → Zone → Read.
    - Zone resources: only `green-tech-hub.com`.
-   - Stored only as `infrastructure/configs/cert-manager/cloudflare-api-token.sops.yaml`. To rotate: issue a new
-     token, re-encrypt over that file, PR, then revoke the old one.
+   - Stored only as `infrastructure/configs/cert-manager/cloudflare-api-token.sops.yaml`. Recreate or rotate it
+     with [SECRETS.md](SECRETS.md).
 2. **A tunnel:** `cloudflared tunnel login` and `cloudflared tunnel create homelab` on the PC. The credentials
-   JSON gets encrypted the same way.
+   JSON gets encrypted the same way, and gets an entry in [SECRETS.md](SECRETS.md).
 3. **A drive for backups**, attached to rpi-01 or rpi-02.
 
 ## Things to watch
