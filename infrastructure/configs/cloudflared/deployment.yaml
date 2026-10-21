@@ -8,7 +8,13 @@ metadata:
   name: cloudflared
   namespace: cloudflared
 spec:
-  replicas: 2
+  # One replica: a second on the same node (below) adds little. Updates still
+  # have no gap, because the new pod connects before the old one stops.
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: cloudflared
@@ -18,11 +24,11 @@ spec:
         app.kubernetes.io/name: cloudflared
       annotations:
         # Restart on a config change; kustomize doesn't hash this ConfigMap.
-        homelab/config-rev: "1"
+        homelab/config-rev: "2"
     spec:
       # It sends traffic to the Gateway, so it must run where Envoy runs
-      # (CONTRIBUTING.md). Today that's only rpi-03 (laptop-01 is tainted), so
-      # both replicas share a node: they cover restarts, not a node failure.
+      # (CONTRIBUTING.md). Today that's only rpi-03 (laptop-01 is tainted).
+      # Go back to 2 replicas when another Envoy node can take one.
       nodeSelector:
         homelab/l7-proxy: supported
       securityContext:
@@ -42,13 +48,16 @@ spec:
           ports:
             - name: metrics
               containerPort: 2000
+          # Ready once a tunnel connection is registered.
           readinessProbe:
             httpGet:
               path: /ready
               port: metrics
+          # Alive while the process answers. Not /ready, which fails whenever
+          # Cloudflare's edge is unreachable and would restart-loop the pod.
           livenessProbe:
             httpGet:
-              path: /ready
+              path: /healthcheck
               port: metrics
             initialDelaySeconds: 10
             failureThreshold: 3
