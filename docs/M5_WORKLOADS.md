@@ -39,9 +39,9 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 
 | # | Repo | PR | Needs | Status |
 |---|---|---|---|---|
-| 0 | homelab-cluster | **Docs**: this plan, README roadmap | — | This PR |
-| 1 | greentechhub-ui | **Playground image**: `playground/Dockerfile` (Python slim, non-root, uvicorn on 8500), multi-arch GHCR workflow, tagged by release version and commit | — | To do |
-| 2 | homelab-cluster | **gth-playground**: namespace, Deployment, Service, `HTTPRoute` on `playground.home`, as in [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). Image pinned by version and digest | 1; GHCR package made public | To do |
+| 0 | homelab-cluster | **Docs**: this plan, README roadmap | — | [#22](https://github.com/GreenMachine582/homelab-cluster/pull/22) |
+| 1 | greentechhub-ui | **Playground image**: `playground/Dockerfile` (Python slim, non-root, uvicorn on 8500), multi-arch GHCR workflow, tagged by release version and commit | — | greentechhub-ui [#129](https://github.com/GreenMachine582/greentechhub-ui/pull/129). On `dev` as `sha-3643bba` (amd64 + arm64); no release tag yet |
+| 2 | homelab-cluster | **gth-playground**: namespace, Deployment, Service, `HTTPRoute` on `playground.home`, as in [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). Image pinned by version and digest (by `sha-3643bba` and digest until a release carries it) | 1; GHCR package made public (done) | [#23](https://github.com/GreenMachine582/homelab-cluster/pull/23) |
 | 3 | HomeLab | **Local volume directories**: `k8s_local_volumes` on rpi-03 creates `/mnt/nvme/k8s/<name>` with owner and mode (`postgres`, `postgres-dumps`, `prometheus`, `grafana`). Updates the `k8s_data_taint_enabled` comment | — | To do |
 | 4 | both | **Postgres**: StatefulSet, PV and PVC, Service, superuser secret, per-app database Job, `pg_dump` CronJob, `homelab-critical` PriorityClass. HomeLab: `pg_dump_fetch.yml` copies dumps home. Restore rehearsal documented | 3 | To do |
 | 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | To do |
@@ -54,8 +54,8 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
 
 1. **A Discord `#homelab-alerts` channel and webhook** (before PR 6). Stored as a SOPS secret, recorded in
    [SECRETS.md](SECRETS.md).
-2. **Make the GHCR package public** after its first push (GitHub → Packages → `greentechhub-ui-playground` →
-   Package settings → Change visibility).
+2. ~~**Make the GHCR package public** after its first push (GitHub → Packages → `greentechhub-ui-playground` →
+   Package settings → Change visibility).~~ Done: the image pulls without credentials.
 3. **Authentik first login** after PR 5, then create the Grafana OAuth2/OpenID provider and application (before
    PR 6). The steps are recorded here once done, so a rebuild can repeat them.
 
@@ -67,6 +67,8 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
   Grafana and anything with a database, and public access too (cloudflared runs there).
 - **Public playground off:** the persona switcher lets anyone act as an admin of the demo. Keep it off the tunnel,
   or put it behind Authentik before adding one.
+- **Playground on a dev build:** the image is pinned to `sha-3643bba`, a `dev` build, because a CI-only change
+  doesn't cut a greentechhub-ui release. Move the pin to `X.Y.Z@sha256:…` at the next release.
 - **No control-plane metrics:** etcd, scheduler and controller-manager problems won't alert. HomeLab's etcd snapshot
   failures still go to Discord.
 - **Monitoring inside the cluster:** nothing alerts if the whole site goes quiet. That's the external Uptime Kuma's
