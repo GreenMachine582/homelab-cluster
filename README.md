@@ -25,8 +25,11 @@ bootstrapped.
 > - the Cloudflare tunnel
 > - Discord deploy notifications
 >
-> M4 closes once the backup target is in place. See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md). Next is M5, the
-> first workloads: [docs/M5_WORKLOADS.md](docs/M5_WORKLOADS.md) and the [Roadmap](#️-roadmap).
+> M4 closes once the backup target is in place. See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md).
+>
+> **M5, the first workloads, is in progress.** The gth-ui playground is live, LAN only, at
+> `https://playground.home.green-tech-hub.com`. Postgres, Authentik and Grafana are next. See
+> [docs/M5_WORKLOADS.md](docs/M5_WORKLOADS.md) and the [Roadmap](#️-roadmap).
 
 **Quick links:** [🏗️ Architecture](#️-architecture) · [🗂️ Repo structure](#️-repo-structure) ·
 [🧩 Platform](#-platform-stack) · [🌐 Network](#-network) · [🔐 Secrets](#-secrets) · [🔒 Security](#-security) ·
@@ -194,7 +197,9 @@ sops apps/prod/my-app/my-app.sops.yaml
    kustomize bases are blocked.
 6. 🗓️ **Scheduling:** the control plane keeps its `NoSchedule` taint. The data node has no taint: its local PVs pin stateful pods there, and Postgres is protected by Guaranteed QoS
    and a `homelab-critical` PriorityClass ([M5](docs/M5_WORKLOADS.md#decisions)).
-7. ⏳ **Backlog:** Cilium network policies, default-deny per namespace.
+7. ⏳ **Backlog:** Cilium network policies, default-deny per namespace. There are none yet, so any pod can reach any
+   other. The only public route is `whoami`. A service gets a tunnel rule only after the pre-exposure checks (backlog),
+   and anything with admin or shared-write features only behind Authentik.
 
 ---
 
@@ -272,7 +277,7 @@ PR is merged.
 | M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | ✅ Done |
 | M3        | Flux bootstrap, SOPS, branch protection, Cilium adopted      | ✅ Done |
 | M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS ([plan](docs/M4_PLATFORM.md)) | 🚧 Backup target left |
-| M5        | gth-ui playground, Postgres, Authentik, Grafana + minimal alerting ([plan](docs/M5_WORKLOADS.md)) | ⏳ Next |
+| M5        | gth-ui playground, Postgres, Authentik, Grafana + minimal alerting ([plan](docs/M5_WORKLOADS.md)) | 🚧 In progress |
 | M6        | BottleBot, GreenTechHub (multi-arch GHCR builds)             | ⏳ Pending |
 | M7        | Jellyfin and remaining services                              | ⏳ Pending |
 | M8        | Cutover from Compose, full DR rebuild test                   | ⏳ Pending |
@@ -281,7 +286,8 @@ PR is merged.
 <summary>📋 Backlog</summary>
 
 Pi-hole (split-horizon DNS), external Uptime Kuma (priority), Loki + Alloy, control-plane metrics, Camunda 8, n8n, control-plane HA, CloudNativePG, VLAN
-segmentation, Longhorn, network policies, GPU workloads.
+segmentation, Longhorn, network policies, pre-exposure checks (a checklist and a CI guard before any tunnel rule), GPU
+workloads.
 
 </details>
 
