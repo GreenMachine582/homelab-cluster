@@ -1,0 +1,56 @@
+---
+# The greentechhub-ui playground: a demo of every gth-* component, on fixture
+# data. LAN only, with no tunnel rule: its persona switcher lets anyone act as
+# a demo admin (docs/M5_WORKLOADS.md).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gth-playground
+  namespace: gth-playground
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gth-playground
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gth-playground
+    spec:
+      # Behind the Gateway, so on a node that runs Envoy (CONTRIBUTING.md).
+      nodeSelector:
+        homelab/l7-proxy: supported
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gth-playground
+          # Built by greentechhub-ui's playground-image workflow. Pinned to the
+          # dev build of #129 until a release tag carries the image; then
+          # X.Y.Z@digest.
+          image: ghcr.io/greenmachine582/greentechhub-ui-playground:sha-3643bba@sha256:1135644d84c8bc89278a27d863614d69a5ce6c15c248c268a80da8c8176331a7
+          ports:
+            - name: http
+              containerPort: 8500
+          # No /health endpoint: the index page is the check.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: { cpu: 10m, memory: 96Mi }
+            limits: { memory: 256Mi }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
