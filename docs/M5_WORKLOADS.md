@@ -25,7 +25,7 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | Dropped | In-cluster Uptime Kuma. It can't report the one failure that matters at a remote site, the site going quiet. The external Uptime Kuma at home stays the backlog priority |
 | Alerts | Alertmanager's native Discord receiver, to a new `#homelab-alerts` channel. Separate from `#homelab-deploys`, so alerts don't get lost in deploy noise |
 | Images | Multi-arch (amd64 + arm64) on GHCR, built by GitHub Actions with buildx. The gth-ui playground is the first pipeline; BottleBot and GreenTechHub reuse it in M6. Packages are public, so no pull secret |
-| Playground | LAN only, `playground.home.green-tech-hub.com`. No tunnel rule: it has a fake persona switcher (admin included) and fixture data |
+| Playground | LAN only, `playground.home.green-tech-hub.com`. No tunnel rule: it has a fake persona switcher (admin included), and any visitor can change demo state that every visitor sees. `playground.green-tech-hub.com` comes later, and only behind Authentik (every user signed in, access by role or group), after PR 5. The migration plan's backlog holds the pre-exposure checks it must pass first |
 | Data node | rpi-03 stays the data node: the only node with real storage (NVMe). The other Pis boot from SD, and laptop-01 keeps its control-plane taint. Every stateful PV lives under `/mnt/nvme/k8s/<name>` on rpi-03 |
 | Data-node taint | **None.** The `local-nvme` PVs' node affinity already pins stateful pods to rpi-03. A taint would only push other pods off the strongest worker (Pi 5, 8 GB), which also runs cloudflared and is one of the two Envoy nodes, and leave general pods on rpi-01 (2 GB) and rpi-02. Revisit when pc-01 or another big worker joins, or if rpi-03 shows contention |
 | Protecting Postgres | Memory requests equal limits (Guaranteed QoS), and a `homelab-critical` PriorityClass for Postgres and Authentik, so other pods are evicted first under memory pressure |
@@ -65,8 +65,9 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
   copy fetched home is the only off-node copy. Point the CronJob at NFS as soon as M4 PR 9 lands.
 - **rpi-03 holds all state:** Postgres, its dumps, Prometheus and Grafana. If rpi-03 is down, so are Authentik,
   Grafana and anything with a database, and public access too (cloudflared runs there).
-- **Public playground off:** the persona switcher lets anyone act as an admin of the demo. Keep it off the tunnel,
-  or put it behind Authentik before adding one.
+- **Public playground off:** the persona switcher lets anyone act as an admin of the demo. Keep it off the tunnel
+  until it's behind Authentik. The cluster has no network policies yet, so an exposed pod could reach every other
+  pod.
 - **Playground on a dev build:** the image is pinned to `sha-3643bba`, a `dev` build, because a CI-only change
   doesn't cut a greentechhub-ui release. Move the pin to `X.Y.Z@sha256:…` at the next release.
 - **No control-plane metrics:** etcd, scheduler and controller-manager problems won't alert. HomeLab's etcd snapshot
