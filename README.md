@@ -25,8 +25,8 @@ bootstrapped.
 > - the Cloudflare tunnel
 > - Discord deploy notifications
 >
-> M4 closes once the backup target is in place. See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md) and the
-> [Roadmap](#️-roadmap).
+> M4 closes once the backup target is in place. See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md). Next is M5, the
+> first workloads: [docs/M5_WORKLOADS.md](docs/M5_WORKLOADS.md) and the [Roadmap](#️-roadmap).
 
 **Quick links:** [🏗️ Architecture](#️-architecture) · [🗂️ Repo structure](#️-repo-structure) ·
 [🧩 Platform](#-platform-stack) · [🌐 Network](#-network) · [🔐 Secrets](#-secrets) · [🔒 Security](#-security) ·
@@ -34,7 +34,8 @@ bootstrapped.
 [🗺️ Roadmap](#️-roadmap)
 
 **Docs:** [🧩 Adding a service](docs/ADDING_A_SERVICE.md) · [🔐 Secrets](docs/SECRETS.md) ·
-[🤝 Contributing](CONTRIBUTING.md) · [🧱 M4 plan + Cloudflare setup](docs/M4_PLATFORM.md)
+[🤝 Contributing](CONTRIBUTING.md) · [🧱 M4 plan + Cloudflare setup](docs/M4_PLATFORM.md) ·
+[📦 M5 plan](docs/M5_WORKLOADS.md)
 
 ---
 
@@ -96,7 +97,7 @@ homelab-cluster/
     controllers/                # Helm releases
       cilium/                   # ✅ adopted from the Ansible install
       cert-manager/             # ✅
-                                # ⏳ kube-prometheus-stack, loki, alloy (M5)
+                                # ⏳ kube-prometheus-stack (M5)
     configs/
       cert-manager/             # ✅ Let's Encrypt ClusterIssuers + Cloudflare token
       cilium/                   # ✅ LB-IPAM pool, L2 announcement policy
@@ -106,11 +107,11 @@ homelab-cluster/
       storage/                  # ✅ local-nvme StorageClass
 
   apps/
-    base/<service>/             # one folder per service: ✅ whoami; ⏳ postgres, authentik, bottlebot,
-                                #   greentechhub, jellyfin, uptime-kuma (M5–M7)
+    base/<service>/             # one folder per service: ✅ whoami; ⏳ gth-playground, postgres,
+                                #   authentik (M5), bottlebot, greentechhub (M6), jellyfin (M7)
     prod/<service>/             # overlays + SOPS secrets
 
-  docs/                         # ADDING_A_SERVICE.md, SECRETS.md, M4_PLATFORM.md
+  docs/                         # ADDING_A_SERVICE.md, SECRETS.md, M4_PLATFORM.md, M5_WORKLOADS.md
 ```
 
 </details>
@@ -134,9 +135,8 @@ homelab-cluster/
 | 🔒 | cert-manager | Let's Encrypt via Cloudflare DNS-01 | `cert-manager` | ✅ |
 | 🚪 | Gateway `homelab` | One LoadBalancer IP for all LAN services, wildcard TLS | `gateway` | ✅ |
 | 🚇 | cloudflared | Outbound tunnel for public routes | `cloudflared` | ✅ |
-| 📈 | kube-prometheus-stack | Prometheus, Grafana, Alertmanager | `monitoring` | ⏳ M5 |
-| 📜 | Loki + Alloy | Log storage and collection | `monitoring` | ⏳ M5 |
-| ⏱️ | Uptime Kuma | Endpoint uptime checks | `uptime-kuma` | ⏳ M5 |
+| 📈 | kube-prometheus-stack | Prometheus, Grafana, Alertmanager (slimmed, no control-plane scraping) | `monitoring` | ⏳ M5 |
+| 📜 | Loki + Alloy | Log storage and collection | `monitoring` | 📋 Backlog |
 
 ---
 
@@ -192,7 +192,8 @@ sops apps/prod/my-app/my-app.sops.yaml
 4. 🔐 **Secrets:** SOPS-encrypted at rest in git, and Kubernetes Secrets are encrypted at rest in etcd.
 5. 📌 **Supply chain:** charts and images pinned; external manifests come only from SHA-pinned Flux sources; remote
    kustomize bases are blocked.
-6. 🗓️ **Scheduling:** the control plane keeps its `NoSchedule` taint. The data node gets its database taint in M6.
+6. 🗓️ **Scheduling:** the control plane keeps its `NoSchedule` taint. The data node has no taint: its local PVs pin stateful pods there, and Postgres is protected by Guaranteed QoS
+   and a `homelab-critical` PriorityClass ([M5](docs/M5_WORKLOADS.md#decisions)).
 7. ⏳ **Backlog:** Cilium network policies, default-deny per namespace.
 
 ---
@@ -205,10 +206,10 @@ Cluster config is rebuildable from this repo. What git can't restore is data and
 |---------------------|---------------------------------|--------------------------------------|-----------|
 | Cluster config      | Git                             | GitHub                               | On merge  |
 | etcd + PKI          | `etcdctl snapshot save`, keep 7 | laptop-01 ✅, fetched home ✅, backup Pi ⏳ (M4) | Daily |
-| PostgreSQL          | `pg_dump` CronJob               | Backup Pi, off the data node ⏳ (M6) | Daily     |
+| PostgreSQL          | `pg_dump` CronJob               | rpi-03 + fetched home ⏳ (M5), backup Pi ⏳ | Daily     |
 | age private key     | Manual offline copies           | Two locations, one off-site          | On change |
 
-Restores are tested, not assumed: the etcd restore in M2, a Postgres restore into a separate instance in M6, and a
+Restores are tested, not assumed: the etcd restore in M2, a Postgres restore into a separate instance in M5, and a
 full rebuild in M8.
 
 ---
@@ -217,7 +218,7 @@ full rebuild in M8.
 
 - 💬 **Live:** Discord `#homelab-deploys` gets every pulled commit, and every applied change or failure, from Flux.
   HomeLab sends node events (boot, power loss, SSH logins, etcd snapshot failures) to Discord.
-- ⏳ **M5:** in-cluster alerting:
+- ⏳ **M5:** in-cluster alerting to Discord `#homelab-alerts`:
 
 | Severity | Condition                                          | Channel |
 |----------|----------------------------------------------------|---------|
@@ -271,15 +272,15 @@ PR is merged.
 | M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | ✅ Done |
 | M3        | Flux bootstrap, SOPS, branch protection, Cilium adopted      | ✅ Done |
 | M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS ([plan](docs/M4_PLATFORM.md)) | 🚧 Backup target left |
-| M5        | Prometheus, Grafana, Loki, Alloy, Uptime Kuma                | ⏳ Pending |
-| M6        | Multi-arch builds; BottleBot, GreenTechHub, Postgres, Authentik | ⏳ Pending |
+| M5        | gth-ui playground, Postgres, Authentik, Grafana + minimal alerting ([plan](docs/M5_WORKLOADS.md)) | ⏳ Next |
+| M6        | BottleBot, GreenTechHub (multi-arch GHCR builds)             | ⏳ Pending |
 | M7        | Jellyfin and remaining services                              | ⏳ Pending |
 | M8        | Cutover from Compose, full DR rebuild test                   | ⏳ Pending |
 
 <details>
 <summary>📋 Backlog</summary>
 
-Pi-hole (split-horizon DNS), external Uptime Kuma, Camunda 8, n8n, control-plane HA, CloudNativePG, VLAN
+Pi-hole (split-horizon DNS), external Uptime Kuma (priority), Loki + Alloy, control-plane metrics, Camunda 8, n8n, control-plane HA, CloudNativePG, VLAN
 segmentation, Longhorn, network policies, GPU workloads.
 
 </details>
