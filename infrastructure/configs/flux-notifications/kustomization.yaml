@@ -5,3 +5,4 @@ resources:
   - discord-webhook.sops.yaml
   - provider.yaml
   - alert.yaml
+  - patch-reminder.yaml
