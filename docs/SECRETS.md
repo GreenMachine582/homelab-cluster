@@ -69,7 +69,7 @@ Nothing here can be decrypted any more. To recover:
 |---|---|---|---|
 | ☁️ | [`cloudflare-api-token.sops.yaml`](#️-cloudflare-api-token) | `cert-manager` / `api-token` | cert-manager DNS-01 |
 | 🚇 | [`tunnel-credentials.sops.yaml`](#-cloudflared-tunnel-credentials) | `cloudflared` / `credentials.json` | cloudflared |
-| 💬 | [`discord-webhook.sops.yaml`](#-discord-webhook) | `flux-system` / `address` | Flux notifications |
+| 💬 | [`discord-webhook.sops.yaml`](#-discord-webhook) | `flux-system` / `address` | Flux notifications, patch reminder |
 
 ### ☁️ Cloudflare API token
 
@@ -160,7 +160,7 @@ the new tunnel is up. So instead:
 | | |
 |---|---|
 | Secret | `discord-webhook` in `flux-system`, key `address` |
-| Used by | Flux Provider `discord`, Alert `homelab-deploys` (deploy notifications) |
+| Used by | Flux Provider `discord`, Alert `homelab-deploys` (deploy notifications); CronJob `patch-reminder` (monthly patching reminder, `patch-reminder.yaml`) |
 | Source | Discord: the `#homelab-deploys` channel → Edit Channel → Integrations → Webhooks → New Webhook → Copy Webhook URL |
 | Created | 21 Oct 2026 ([#20](https://github.com/GreenMachine582/homelab-cluster/pull/20)) |
 

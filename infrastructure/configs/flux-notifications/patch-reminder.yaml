@@ -1,0 +1,76 @@
+---
+# Monthly reminder to patch the nodes (HomeLab playbooks/patch_nodes.yml,
+# docs/K8S_PATCHING.md, decision 39): patching is a manual run, so this posts
+# to Discord on the first Saturday of the month, 09:00 Sydney time.
+# It reuses Flux's webhook secret (#homelab-deploys), which is why it lives
+# in flux-system: Secrets can't be read from another namespace.
+#
+# Cron ORs day-of-month and day-of-week, so it fires every Saturday and the
+# script skips all but the first. TZ is a POSIX rule (the image has no
+# tzdata) so the date check agrees with spec.timeZone.
+#
+# Test post now (FORCE=1 skips the first-Saturday check):
+#   kubectl -n flux-system create job patch-reminder-test --from=cronjob/patch-reminder \
+#     --dry-run=client -o yaml | kubectl set env --local -f - FORCE=1 -o yaml | kubectl create -f -
+#   kubectl -n flux-system delete job patch-reminder-test
+# Pause: spec.suspend: true (in a PR).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: patch-reminder
+  namespace: flux-system
+spec:
+  schedule: "0 9 * * 6"
+  timeZone: Australia/Sydney
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: patch-reminder
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: post
+              image: curlimages/curl:8.23.0
+              env:
+                - name: DISCORD_WEBHOOK
+                  valueFrom:
+                    secretKeyRef:
+                      name: discord-webhook
+                      key: address
+                - name: TZ
+                  value: AEST-10AEDT,M10.1.0,M4.1.0/3
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  if [ "${FORCE:-0}" != 1 ] && [ "$(date +%d)" -gt 7 ]; then
+                    echo "Not the first Saturday ($(date +%F)); nothing to post."
+                    exit 0
+                  fi
+                  # No heredoc: busybox sh writes those to /tmp, and the root
+                  # filesystem is read-only.
+                  curl -fsS -H 'Content-Type: application/json' "$DISCORD_WEBHOOK" -d '{"username": "Patch reminder", "content": "🩹 **Monthly node patching is due.** From WSL in `~/homelab`:\n```\ngit pull\nansible-playbook -i inventories/k8s.yml playbooks/patch_nodes.yml --tags report\nansible-playbook -i inventories/k8s.yml playbooks/patch_nodes.yml\nansible-playbook -i inventories/k8s.yml playbooks/cluster_status.yml\n```\nRunbook: <https://github.com/GreenMachine582/HomeLab/blob/main/docs/K8S_PATCHING.md>"}'
+                  echo "Posted the reminder."
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests: { cpu: 10m, memory: 16Mi }
+                limits: { memory: 64Mi }
