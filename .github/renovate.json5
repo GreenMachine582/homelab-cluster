@@ -1,12 +1,12 @@
-// Renovate (GitHub App): PRs for the Helm charts (Flux HelmReleases), the
-// images in apps/ and infrastructure/, and GitHub Actions. Minor and patch
-// updates automerge once a release is 3 days old, on weekday working hours,
-// Sydney time, and Flux rolls them out; majors and 0.x wait for review.
-// See CONTRIBUTING.md.
+// Renovate (GitHub App): PRs for the Helm charts (Flux HelmReleases), Flux's
+// own manifests, the images in apps/ and infrastructure/, and GitHub Actions.
+// Minor, patch and digest updates automerge once a release is 3 days old, on
+// weekday working hours, Sydney time, and Flux rolls them out; majors and 0.x
+// wait for review. Images are pinned by tag and digest, so a re-pushed tag
+// can't change what runs. See CONTRIBUTING.md.
 //
-// Not here: Flux itself. clusters/prod/flux-system/gotk-components.yaml is
-// regenerated with `flux install --export` when HomeLab's flux_version moves
-// (Renovate opens that PR in HomeLab).
+// Held versions are still tracked: they open a PR only when ticked on the
+// Dependency Dashboard issue, and each rule says why it's held.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended", ":dependencyDashboard"],
@@ -21,17 +21,30 @@
   minimumReleaseAge: "3 days",
   enabledManagers: ["flux", "kubernetes", "github-actions"],
   flux: {
-    managerFilePatterns: ["/^(apps|infrastructure)/.+\\.ya?ml$/"],
+    managerFilePatterns: [
+      "/^(apps|infrastructure)/.+\\.ya?ml$/",
+      "/^clusters/prod/flux-system/gotk-components\\.yaml$/",
+    ],
   },
   kubernetes: {
     managerFilePatterns: ["/^(apps|infrastructure)/.+\\.ya?ml$/"],
+    pinDigests: true,
   },
-  ignorePaths: ["clusters/prod/flux-system/**"],
   packageRules: [
     {
-      description: "Automerge minor and patch, except 0.x (where a minor can break)",
-      matchUpdateTypes: ["minor", "patch"],
+      description: "Automerge minor, patch and digest updates, except 0.x (where a minor can break)",
+      matchUpdateTypes: ["minor", "patch", "pin", "digest"],
       matchCurrentVersion: "!/^v?0\\./",
+      automerge: true,
+      automergeType: "pr",
+      platformAutomerge: true,
+      automergeSchedule: ["* 9-16 * * 1-5"],
+    },
+    {
+      description: "Our own release tags, smoke-tested by greentechhub-ui's CI: automerge 0.x minors too, no wait. dev, sha-* and latest aren't versions, so they're never offered.",
+      matchDepNames: ["ghcr.io/greenmachine582/greentechhub-ui-playground"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      minimumReleaseAge: "0 days",
       automerge: true,
       automergeType: "pr",
       platformAutomerge: true,
@@ -40,18 +53,25 @@
     {
       description: "Held at 1.20.1: 1.20.2 loads socket-LB programs that need kernel BTF, which the Raspberry Pi OS kernels lack. See the HelmRelease header.",
       matchDepNames: ["cilium"],
-      enabled: false,
+      dependencyDashboardApproval: true,
+      automerge: false,
+      prBodyNotes: [
+        "Held for kernel BTF. Before merging: `/sys/kernel/btf/vmlinux` exists on the Pis, or the release notes say socket LB works without it. Bump HomeLab's `cilium_version` (the fresh-install seed) in a matching PR.",
+      ],
     },
     {
-      description: "Built and pinned (tag and digest) by the GreenTechHub pipeline",
-      matchDepNames: ["ghcr.io/greenmachine582/greentechhub-ui-playground"],
-      enabled: false,
+      description: "Flux itself: the controller CLI version must match",
+      matchDepNames: ["fluxcd/flux2"],
+      automerge: false,
+      prBodyNotes: [
+        "Bump HomeLab's `flux_version` in a matching PR (Renovate opens it there), then run `controller.yml -K` for the CLI.",
+      ],
     },
     {
       description: "HomeLab's cloudflared_version (the controller's CLI) follows this image",
       matchDepNames: ["cloudflare/cloudflared"],
       prBodyNotes: [
-        "Renovate opens the matching `cloudflared_version` PR in HomeLab; it needs `cloudflared_sha256` filled in by hand.",
+        "Renovate opens the matching `cloudflared_version` PR in HomeLab; its checksums are filled in by a workflow there.",
       ],
     },
   ],

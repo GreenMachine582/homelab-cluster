@@ -107,7 +107,9 @@ the old one.
 - [ ] ☁️ Anything set up by hand (Cloudflare dashboard, DNS, tunnel) is recorded in the
   [Cloudflare setup](docs/M4_PLATFORM.md#cloudflare-setup-manual) table.
 - [ ] 📌 Helm charts and images are pinned to exact versions. Renovate (`.github/renovate.json5`) opens the bumps
-  and automerges minor and patch ones. To hold a version, add a disabled `packageRules` entry that says why.
+  and automerges minor and patch ones. To hold a version, give it a `packageRules` entry with
+  `dependencyDashboardApproval: true` and a description saying why. It then waits for a tick on the Dependency
+  Dashboard issue.
 - [ ] 🧩 New services follow [docs/ADDING_A_SERVICE.md](docs/ADDING_A_SERVICE.md) (layout, Gateway route, tunnel).
 - [ ] 🏗️ Workloads are multi-arch and set resource requests and limits. Anything needing L7/FQDN/TLS policy or the
   Gateway selects `homelab/l7-proxy: supported`.
