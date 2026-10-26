@@ -1,0 +1,58 @@
+// Renovate (GitHub App): PRs for the Helm charts (Flux HelmReleases), the
+// images in apps/ and infrastructure/, and GitHub Actions. Minor and patch
+// updates automerge once a release is 3 days old, on weekday working hours,
+// Sydney time, and Flux rolls them out; majors and 0.x wait for review.
+// See CONTRIBUTING.md.
+//
+// Not here: Flux itself. clusters/prod/flux-system/gotk-components.yaml is
+// regenerated with `flux install --export` when HomeLab's flux_version moves
+// (Renovate opens that PR in HomeLab).
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended", ":dependencyDashboard"],
+  timezone: "Australia/Sydney",
+  // build(deps): ..., the type CONTRIBUTING.md uses for chart and image
+  // versions; passes commit-style.
+  semanticCommits: "enabled",
+  semanticCommitType: "build",
+  semanticCommitScope: "deps",
+  // Commits through the GitHub API, signed by GitHub: main requires signatures.
+  platformCommit: "enabled",
+  minimumReleaseAge: "3 days",
+  enabledManagers: ["flux", "kubernetes", "github-actions"],
+  flux: {
+    managerFilePatterns: ["/^(apps|infrastructure)/.+\\.ya?ml$/"],
+  },
+  kubernetes: {
+    managerFilePatterns: ["/^(apps|infrastructure)/.+\\.ya?ml$/"],
+  },
+  ignorePaths: ["clusters/prod/flux-system/**"],
+  packageRules: [
+    {
+      description: "Automerge minor and patch, except 0.x (where a minor can break)",
+      matchUpdateTypes: ["minor", "patch"],
+      matchCurrentVersion: "!/^v?0\\./",
+      automerge: true,
+      automergeType: "pr",
+      platformAutomerge: true,
+      automergeSchedule: ["* 9-16 * * 1-5"],
+    },
+    {
+      description: "Held at 1.20.1: 1.20.2 loads socket-LB programs that need kernel BTF, which the Raspberry Pi OS kernels lack. See the HelmRelease header.",
+      matchDepNames: ["cilium"],
+      enabled: false,
+    },
+    {
+      description: "Built and pinned (tag and digest) by the GreenTechHub pipeline",
+      matchDepNames: ["ghcr.io/greenmachine582/greentechhub-ui-playground"],
+      enabled: false,
+    },
+    {
+      description: "HomeLab's cloudflared_version (the controller's CLI) follows this image",
+      matchDepNames: ["cloudflare/cloudflared"],
+      prBodyNotes: [
+        "Renovate opens the matching `cloudflared_version` PR in HomeLab; it needs `cloudflared_sha256` filled in by hand.",
+      ],
+    },
+  ],
+}
