@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - lb-ipam-pool.yaml
   - l2-announcement-policy.yaml
+  - node-config-no-l7-proxy.yaml

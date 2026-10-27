@@ -1,0 +1,22 @@
+---
+# L7 proxy off on the Pi 4s (homelab/l7-proxy=unsupported: rpi-01, rpi-02).
+# They can't run Envoy (39-bit kernel, see the HelmRelease's envoy values),
+# but their agents still had the L7 proxy on with an external Envoy. Each
+# endpoint update then waited for an Envoy ACK that never came, so new pods
+# there stayed in ContainerCreating (helm-controller and cert-manager-webhook
+# after the October patching drain). Nothing L7 is meant to run on them.
+#
+# An agent reads this only when it starts: after a change, restart the cilium
+# pod on each Pi 4, one node at a time.
+apiVersion: cilium.io/v2
+kind: CiliumNodeConfig
+metadata:
+  name: no-l7-proxy
+  namespace: kube-system
+spec:
+  nodeSelector:
+    matchLabels:
+      homelab/l7-proxy: unsupported
+  defaults:
+    enable-l7-proxy: "false"
+    enable-envoy-config: "false"
