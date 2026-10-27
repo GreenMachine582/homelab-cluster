@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# Social login: GitHub, Google and Discord buttons on the login page
+# (docs/AUTHENTIK.md › Social login). Link-only: no source has an
+# enrollment flow, and users match by the source's own ID, never by email,
+# so a social account signs in only after its owner has linked it from
+# their user settings. Social logins still go through MFA, like mfa.yaml's
+# default login flow.
+#
+# Client IDs and secrets come from the authentik-social-sources secret.
+# Each provider's app redirects to
+# https://auth.home.green-tech-hub.com/source/oauth/callback/<slug>/
+version: 1
+metadata:
+  name: homelab - Social login
+entries:
+  # The defaults this uses, so they exist first.
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Authentication flow
+      required: false
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Source authentication flow
+      required: false
+
+  # Like default-source-authentication, plus MFA before the login.
+  - model: authentik_flows.flow
+    id: flow
+    identifiers:
+      slug: homelab-source-authentication
+    attrs:
+      name: Social login
+      title: Welcome to HomeLab!
+      designation: authentication
+      authentication: require_unauthenticated
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow
+      order: 10
+    attrs:
+      stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, default-authentication-mfa-validation]]
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow
+      order: 20
+    attrs:
+      stage: !Find [authentik_stages_user_login.userloginstage, [name, default-source-authentication-login]]
+  # Only reachable from a source, never opened directly.
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf flow
+      order: 0
+    attrs:
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, default-source-authentication-if-sso]]
+
+  - model: authentik_sources_oauth.oauthsource
+    id: github
+    identifiers:
+      slug: github
+    attrs: &source
+      name: GitHub
+      provider_type: github
+      consumer_key: !Env AUTHENTIK_GITHUB_CLIENT_ID
+      consumer_secret: !Env AUTHENTIK_GITHUB_CLIENT_SECRET
+      authentication_flow: !KeyOf flow
+      enrollment_flow: null
+      user_matching_mode: identifier
+  - model: authentik_sources_oauth.oauthsource
+    id: google
+    identifiers:
+      slug: google
+    attrs:
+      <<: *source
+      name: Google
+      provider_type: google
+      consumer_key: !Env AUTHENTIK_GOOGLE_CLIENT_ID
+      consumer_secret: !Env AUTHENTIK_GOOGLE_CLIENT_SECRET
+  - model: authentik_sources_oauth.oauthsource
+    id: discord
+    identifiers:
+      slug: discord
+    attrs:
+      <<: *source
+      name: Discord
+      provider_type: discord
+      consumer_key: !Env AUTHENTIK_DISCORD_CLIENT_ID
+      consumer_secret: !Env AUTHENTIK_DISCORD_CLIENT_SECRET
+
+  # The buttons on the default login page.
+  - model: authentik_stages_identification.identificationstage
+    identifiers:
+      name: default-authentication-identification
+    attrs:
+      sources:
+        - !KeyOf github
+        - !KeyOf google
+        - !KeyOf discord
+      show_source_labels: true

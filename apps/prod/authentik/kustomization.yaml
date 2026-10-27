@@ -6,3 +6,4 @@ resources:
   # Created with scripts/sops-secret.sh, see docs/SECRETS.md.
   - authentik-secrets.sops.yaml
   - authentik-grafana-oidc.sops.yaml
+  - authentik-social-sources.sops.yaml

@@ -85,6 +85,7 @@ For a file, use `--from-file=<key>=<path>` instead of `read` + `--from-literal`.
 | 🐘 | [`postgres-app-passwords.sops.yaml`](#-postgres-app-passwords) | `postgres` / one key per app (`authentik`) | `app-databases` Job |
 | 🔑 | [`authentik-secrets.sops.yaml`](#-authentik-secrets) | `authentik` / `AUTHENTIK_SECRET_KEY`, `AUTHENTIK_POSTGRESQL__PASSWORD`, `AUTHENTIK_BOOTSTRAP_PASSWORD`, `AUTHENTIK_BOOTSTRAP_EMAIL` | Authentik server and worker |
 | 📈 | [`authentik-grafana-oidc.sops.yaml`](#-authentik-grafana-oidc-client) | `authentik` / `AUTHENTIK_GRAFANA_CLIENT_SECRET` | the `grafana` blueprint (OAuth2 provider); Grafana's copy in PR 6 |
+| 🔗 | [`authentik-social-sources.sops.yaml`](#-authentik-social-login-sources) | `authentik` / `AUTHENTIK_{GITHUB,GOOGLE,DISCORD}_CLIENT_{ID,SECRET}` | the `sources` blueprint (GitHub, Google and Discord login) |
 
 ### ☁️ Cloudflare API token
 
@@ -303,5 +304,27 @@ Grafana's copy, in PR 6, uses the source `sops:apps/prod/authentik/authentik-gra
 🔄 **Rotate:** recreate this file and Grafana's copy in one PR. A changed Secret doesn't restart pods, so after the
 merge run `kubectl -n authentik rollout restart deploy`. The worker re-applies the blueprints at start, with the new
 value.
+
+</details>
+
+### 🔗 Authentik social login sources
+
+<details>
+<summary><code>apps/prod/authentik/authentik-social-sources.sops.yaml</code></summary>
+
+| | |
+|---|---|
+| Secret | `authentik-social-sources` in `authentik`, keys `AUTHENTIK_<P>_CLIENT_ID` and `AUTHENTIK_<P>_CLIENT_SECRET` for `GITHUB`, `GOOGLE` and `DISCORD`, as env on the server and worker (`global.envFrom`) |
+| Used by | `apps/base/authentik/blueprints/sources.yaml` (`consumer_key` / `consumer_secret: !Env …`) |
+| Source | each provider's OAuth app ([AUTHENTIK.md › Social login](AUTHENTIK.md#-social-login)) |
+| Created | 28 Oct 2026 (Authentik social login PR) |
+
+```bash
+scripts/sops-secret.sh apps/prod/authentik/authentik-social-sources.sops.yaml authentik-social-sources authentik   AUTHENTIK_GITHUB_CLIENT_ID=ask AUTHENTIK_GITHUB_CLIENT_SECRET=ask   AUTHENTIK_GOOGLE_CLIENT_ID=ask AUTHENTIK_GOOGLE_CLIENT_SECRET=ask   AUTHENTIK_DISCORD_CLIENT_ID=ask AUTHENTIK_DISCORD_CLIENT_SECRET=ask
+```
+
+🔄 **Rotate:** make a new secret in the provider's console, recreate this file with the same command (the other
+providers' current values passed as `ask`), merge, then run `kubectl -n authentik rollout restart deploy`. Delete the
+old secret in the console once a login works.
 
 </details>
