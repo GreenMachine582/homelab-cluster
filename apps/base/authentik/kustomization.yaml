@@ -6,3 +6,16 @@ resources:
   - helmrepository.yaml
   - helmrelease.yaml
   - httproute.yaml
+# Authentik config as code (blueprints/): the chart mounts this ConfigMap and
+# the worker applies every file at start and whenever it changes. A fixed
+# name, because the HelmRelease refers to it.
+configMapGenerator:
+  - name: authentik-blueprints
+    namespace: authentik
+    files:
+      - blueprints/mfa.yaml
+      - blueprints/brand.yaml
+      - blueprints/admins.yaml
+      - blueprints/grafana.yaml
+    options:
+      disableNameSuffixHash: true
