@@ -5,8 +5,9 @@
 // wait for review. Images are pinned by tag and digest, so a re-pushed tag
 // can't change what runs. See CONTRIBUTING.md.
 //
-// Held versions are still tracked: they open a PR only when ticked on the
-// Dependency Dashboard issue, and each rule says why it's held.
+// Held versions are still tracked, but capped with allowedVersions, so only a
+// PR lifting the cap moves them; inside the cap they still wait for Dependency
+// Dashboard approval. Each rule says why it's held.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended", ":dependencyDashboard"],
@@ -51,8 +52,9 @@
       automergeSchedule: ["* 9-16 * * 1-5"],
     },
     {
-      description: "Held at 1.20.1: 1.20.2 loads socket-LB programs that need kernel BTF, which the Raspberry Pi OS kernels lack. See the HelmRelease header.",
+      description: "Held at 1.20.1: 1.20.2 loads socket-LB programs that need kernel BTF, which the Raspberry Pi OS kernels lack. See the HelmRelease header. Lift the cap in a PR (with HomeLab's) once they have it.",
       matchDepNames: ["cilium"],
+      allowedVersions: "<=1.20.1",
       dependencyDashboardApproval: true,
       automerge: false,
       prBodyNotes: [
