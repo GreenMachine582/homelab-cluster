@@ -84,6 +84,7 @@ For a file, use `--from-file=<key>=<path>` instead of `read` + `--from-literal`.
 | 🐘 | [`postgres-superuser.sops.yaml`](#-postgres-superuser) | `postgres` / `password` | Postgres, `app-databases` Job, `pg-dump` CronJob |
 | 🐘 | [`postgres-app-passwords.sops.yaml`](#-postgres-app-passwords) | `postgres` / one key per app (`authentik`) | `app-databases` Job |
 | 🔑 | [`authentik-secrets.sops.yaml`](#-authentik-secrets) | `authentik` / `AUTHENTIK_SECRET_KEY`, `AUTHENTIK_POSTGRESQL__PASSWORD`, `AUTHENTIK_BOOTSTRAP_PASSWORD`, `AUTHENTIK_BOOTSTRAP_EMAIL` | Authentik server and worker |
+| 📈 | [`authentik-grafana-oidc.sops.yaml`](#-authentik-grafana-oidc-client) | `authentik` / `AUTHENTIK_GRAFANA_CLIENT_SECRET` | the `grafana` blueprint (OAuth2 provider); Grafana's copy in PR 6 |
 
 ### ☁️ Cloudflare API token
 
@@ -277,5 +278,30 @@ from git history if needed, or pass it with `AUTHENTIK_SECRET_KEY=ask`. Only an 
   `kubectl -n authentik rollout restart deploy`.
 - **akadmin password:** change it in the Authentik UI. The bootstrap value isn't read again.
 - **Secret key:** don't.
+
+</details>
+
+### 📈 Authentik Grafana OIDC client
+
+<details>
+<summary><code>apps/prod/authentik/authentik-grafana-oidc.sops.yaml</code></summary>
+
+| | |
+|---|---|
+| Secret | `authentik-grafana-oidc` in `authentik`, key `AUTHENTIK_GRAFANA_CLIENT_SECRET`, as env on the server and worker (`global.envFrom`) |
+| Used by | `apps/base/authentik/blueprints/grafana.yaml` (`client_secret: !Env …`). Grafana's own secret (M5 PR 6) holds a copy, and the two must match |
+| Source | generated |
+| Created | 27 Oct 2026 (Authentik blueprints PR) |
+
+```bash
+scripts/sops-secret.sh apps/prod/authentik/authentik-grafana-oidc.sops.yaml authentik-grafana-oidc authentik \
+  AUTHENTIK_GRAFANA_CLIENT_SECRET=gen:64
+```
+
+Grafana's copy, in PR 6, uses the source `sops:apps/prod/authentik/authentik-grafana-oidc.sops.yaml:AUTHENTIK_GRAFANA_CLIENT_SECRET`.
+
+🔄 **Rotate:** recreate this file and Grafana's copy in one PR. A changed Secret doesn't restart pods, so after the
+merge run `kubectl -n authentik rollout restart deploy`. The worker re-applies the blueprints at start, with the new
+value.
 
 </details>

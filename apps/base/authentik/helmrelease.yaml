@@ -37,7 +37,17 @@ spec:
     authentik:
       existingSecret:
         secretName: authentik-secrets
+    # Config as code: blueprints/ via kustomization.yaml's configMapGenerator.
+    # Objects they define are reset to git on every apply, so change them
+    # there, not in the UI.
+    blueprints:
+      configMaps:
+        - authentik-blueprints
     global:
+      # Values the blueprints read with !Env.
+      envFrom:
+        - secretRef:
+            name: authentik-grafana-oidc
       # env wins over the secret's envFrom, so nothing here can be
       # overridden by accident.
       env:

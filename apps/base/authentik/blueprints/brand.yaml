@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# The default brand's title, and the embedded outpost's public URL. Login
+# needs no base URL (Authentik uses the request's host); authentik_host is
+# what forward-auth and proxy providers redirect to.
+version: 1
+metadata:
+  name: homelab - Brand and outpost host
+entries:
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Brand
+      required: false
+
+  - model: authentik_brands.brand
+    identifiers:
+      domain: authentik-default
+      default: true
+    attrs:
+      branding_title: HomeLab
+
+  - model: authentik_outposts.outpost
+    identifiers:
+      managed: goauthentik.io/outposts/embedded
+    attrs:
+      config:
+        authentik_host: https://auth.home.green-tech-hub.com
+        authentik_host_insecure: false
