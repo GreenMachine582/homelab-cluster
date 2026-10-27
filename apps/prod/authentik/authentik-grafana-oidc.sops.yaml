@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+    AUTHENTIK_GRAFANA_CLIENT_SECRET: ENC[AES256_GCM,data:k+RYuPnqiBoWpJmfCkISNGEOBBPUJrl0CcmcvaBJzO0INNFKTpYUSOAEvPLEOXwB947JXTSJ0HeBpNbe6mMMcyrPOxLbUX1J3N+bA9SwvoDvrzMlaRRHvQ==,iv:bTG9d6MdeWmiC1ZfPBoAGh7jKLOAQLSn7SrlmpaZFyA=,tag:7s3K4aqVUkCoqu646XtXdA==,type:str]
+kind: Secret
+metadata:
+    name: authentik-grafana-oidc
+    namespace: authentik
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBmdnJSQUVzZ1kyOUNDbTVS
+            aUt2NDc0RFB6MFdCTGJ1Rmp1SUdndDVJcUcwCm5xZWFDQ2paVzZ3WnNLbHJJMit3
+            eUZqdEo0WFlWemJJejM2YkdBb1gzVVEKLS0tIFFuR0JRUTFWR0R0eGNWMWNic08x
+            UTA2M0VpY3lEZnNMcTBiSFVUd3E5cUkKo3EXQkapfhdw5Gatqkx+yDoxxUgjXA3j
+            TU6xMpcLJsWzMCS2Ox6MPLSQCssmbUCFQyei4OpvGuFYiLJdv0OQyw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age19k96we2u9cytex9zru4r0yaskqc88aryvh2mw5d7m2etjqschevqgyvrs5
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-10-27T09:19:45Z"
+    mac: ENC[AES256_GCM,data:T0U0Hs9A6Dlkpa+7GYJTLp2oBuEKb2cYXJB+g3ywqusEQC3zMsonZGZ7grXTjKTW1seeJll8R1axYnEsZvYa/kvqcXemkvkHzuFK1SgIdz4gcb+gNnzHgtoQ00HoP4gA9pvYGzjiBqVHxAnc50w3DzY6uVrb7kvToW3TmUsPs88=,iv:O+6ETaVSU7u09cwGUCvgr/KFyWtXLgp5TpraTWXhW0o=,tag:+vkV6YY17DglecHDNm3Hqw==,type:str]
+    version: 3.13.3

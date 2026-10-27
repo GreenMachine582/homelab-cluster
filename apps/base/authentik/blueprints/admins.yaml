@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# homelab-admins: Authentik superusers, and Grafana Admins through the
+# groups claim (M5 PR 6). Add your own user to it in the UI; users and their
+# passwords stay out of git.
+version: 1
+metadata:
+  name: homelab - Admins group
+entries:
+  - model: authentik_core.group
+    identifiers:
+      name: homelab-admins
+    attrs:
+      is_superuser: true
