@@ -7,4 +7,5 @@ resources:
   - cloudflared
   - flux-notifications
   - gateway
+  - scheduling
   - storage

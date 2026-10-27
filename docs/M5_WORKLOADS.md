@@ -40,15 +40,38 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | # | Repo | PR | Needs | Status |
 |---|---|---|---|---|
 | 0 | homelab-cluster | **Docs**: this plan, README roadmap | — | [#22](https://github.com/GreenMachine582/homelab-cluster/pull/22) |
-| 1 | greentechhub-ui | **Playground image**: `playground/Dockerfile` (Python slim, non-root, uvicorn on 8500), multi-arch GHCR workflow, tagged by release version and commit | — | greentechhub-ui [#129](https://github.com/GreenMachine582/greentechhub-ui/pull/129). On `dev` as `sha-3643bba` (amd64 + arm64); no release tag yet |
-| 2 | homelab-cluster | **gth-playground**: namespace, Deployment, Service, `HTTPRoute` on `playground.home`, as in [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). Image pinned by version and digest (by `sha-3643bba` and digest until a release carries it) | 1; GHCR package made public (done) | [#23](https://github.com/GreenMachine582/homelab-cluster/pull/23) |
-| 3 | HomeLab | **Local volume directories**: `k8s_local_volumes` on rpi-03 creates `/mnt/nvme/k8s/<name>` with owner and mode (`postgres`, `postgres-dumps`, `prometheus`, `grafana`). Updates the `k8s_data_taint_enabled` comment | — | To do |
-| 4 | both | **Postgres**: StatefulSet, PV and PVC, Service, superuser secret, per-app database Job, `pg_dump` CronJob, `homelab-critical` PriorityClass. HomeLab: `pg_dump_fetch.yml` copies dumps home. Restore rehearsal documented | 3 | To do |
+| 1 | greentechhub-ui | **Playground image**: `playground/Dockerfile` (Python slim, non-root, uvicorn on 8500), multi-arch GHCR workflow, tagged by release version and commit | — | greentechhub-ui [#129](https://github.com/GreenMachine582/greentechhub-ui/pull/129); released in 0.20.0 |
+| 2 | homelab-cluster | **gth-playground**: namespace, Deployment, Service, `HTTPRoute` on `playground.home`, as in [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). Image pinned by version and digest (`0.20.0@sha256:…`; Renovate automerges releases) | 1; GHCR package made public (done) | [#23](https://github.com/GreenMachine582/homelab-cluster/pull/23) |
+| 3 | HomeLab | **Local volume directories**: `k8s_local_volumes` on rpi-03 creates `/mnt/nvme/k8s/<name>` with owner and mode (`postgres`, `postgres-dumps`, `prometheus`, `grafana`). Updates the `k8s_data_taint_enabled` comment | — | [HomeLab #42](https://github.com/GreenMachine582/HomeLab/pull/42) |
+| 4 | both | **Postgres**: StatefulSet, PV and PVC, Service, superuser secret, per-app database Job, `pg_dump` CronJob, `homelab-critical` PriorityClass. HomeLab: `pg_dump_fetch.yml` copies dumps home. Restore rehearsal documented | 3 | homelab-cluster PR (this one) + HomeLab `pg_dump_fetch.yml` PR |
 | 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | To do |
 | 6 | homelab-cluster | **Monitoring + Grafana**: slimmed `kube-prometheus-stack`, Prometheus and Grafana PVs, Alertmanager → `#homelab-alerts`, Grafana on `grafana.home` with Authentik OIDC | 3, 5; `#homelab-alerts` webhook; Grafana application in Authentik | To do |
 | 7 | both | **Exit + docs**: crash-loop and failed-Job alert tests (a temporary `test/` PR), dump restore, M5 marked done | 1–6 | To do |
 
 Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
+
+## Postgres runbook
+
+`apps/base/postgres/`: Postgres 18 at `postgres.postgres.svc:5432`, data on `/mnt/nvme/k8s/postgres` (rpi-03).
+
+- **Adding an app:** add a key named after the app (lowercase, digits, `_`) to `postgres-app-passwords`
+  ([SECRETS.md](SECRETS.md#-postgres-app-passwords)), then bump `homelab/run` in `app-databases-job.yaml`. Flux
+  replaces the Job, which creates the role and database. Give the app its own copy of the password in its namespace.
+- **Check it:**
+  ```bash
+  kubectl -n postgres get pod,pvc                        # postgres-0 Running, both claims Bound
+  kubectl -n postgres logs job/app-databases             # "ready: <app>" per app
+  kubectl -n postgres exec postgres-0 -- psql -U postgres -c '\l'
+  ```
+- **Test a dump:** `kubectl -n postgres create job --from=cronjob/pg-dump dump-test`, then
+  `kubectl -n postgres logs job/dump-test` lists `/dumps`. HomeLab's `pg_dump_fetch.yml` copies the newest home.
+- **PV recovery:** the PVs are `Retain` and each has a `claimRef`. After a cluster rebuild, or if a PVC was deleted,
+  the data is still on rpi-03. Delete the old PV object if it's `Released` (`kubectl delete pv postgres-data`), and
+  Flux recreates it from git, already bound to its claim. Never delete `/mnt/nvme/k8s/postgres` itself.
+- **Restore** (rehearsed in PR 7): load a fetched dump into a throwaway `postgres:18` and check the app databases:
+  `zcat pg_dumpall-*.sql.gz | psql -U postgres`.
+- **Major upgrades** (19+): Renovate's cap keeps them out. Dump, restore into a new major on a fresh PV, and switch
+  over in a PR.
 
 ## What's needed from you
 
@@ -68,8 +91,6 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
 - **Public playground off:** the persona switcher lets anyone act as an admin of the demo. Keep it off the tunnel
   until it's behind Authentik. The cluster has no network policies yet, so an exposed pod could reach every other
   pod.
-- **Playground on a dev build:** the image is pinned to `sha-3643bba`, a `dev` build, because a CI-only change
-  doesn't cut a greentechhub-ui release. Move the pin to `X.Y.Z@sha256:…` at the next release.
 - **No control-plane metrics:** etcd, scheduler and controller-manager problems won't alert. HomeLab's etcd snapshot
   failures still go to Discord.
 - **Monitoring inside the cluster:** nothing alerts if the whole site goes quiet. That's the external Uptime Kuma's

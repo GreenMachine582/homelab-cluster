@@ -70,6 +70,8 @@ Nothing here can be decrypted any more. To recover:
 | ☁️ | [`cloudflare-api-token.sops.yaml`](#️-cloudflare-api-token) | `cert-manager` / `api-token` | cert-manager DNS-01 |
 | 🚇 | [`tunnel-credentials.sops.yaml`](#-cloudflared-tunnel-credentials) | `cloudflared` / `credentials.json` | cloudflared |
 | 💬 | [`discord-webhook.sops.yaml`](#-discord-webhook) | `flux-system` / `address` | Flux notifications, patch reminder |
+| 🐘 | [`postgres-superuser.sops.yaml`](#-postgres-superuser) | `postgres` / `password` | Postgres, `app-databases` Job, `pg-dump` CronJob |
+| 🐘 | [`postgres-app-passwords.sops.yaml`](#-postgres-app-passwords) | `postgres` / one key per app (`authentik`) | `app-databases` Job |
 
 ### ☁️ Cloudflare API token
 
@@ -179,5 +181,80 @@ grep -c 'ENC\[' "$f"
 1. Delete the webhook in Discord. That revokes it at once.
 2. Make a new one.
 3. Recreate the file as above.
+
+</details>
+
+### 🐘 Postgres superuser
+
+<details>
+<summary><code>apps/prod/postgres/postgres-superuser.sops.yaml</code></summary>
+
+| | |
+|---|---|
+| Secret | `postgres-superuser` in `postgres`, key `password` |
+| Used by | the `postgres` StatefulSet (`POSTGRES_PASSWORD`, applied only on first start of an empty data directory), the `app-databases` Job and the `pg-dump` CronJob |
+| Source | generated: `openssl rand`. Nothing outside the cluster knows it |
+| Created | 27 Oct 2026 (M5 PR 4) |
+
+Generated straight into the variable, so it's never shown:
+
+```bash
+cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
+VALUE=$(openssl rand -base64 32 | tr -d '/+=\n'); echo ${#VALUE}
+f=apps/prod/postgres/postgres-superuser.sops.yaml
+kubectl create secret generic postgres-superuser -n postgres \
+  --from-literal=password="$VALUE" --dry-run=client -o yaml \
+| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
+unset VALUE
+grep -c 'ENC\[' "$f"
+```
+
+🔄 **Rotate.** The image reads `POSTGRES_PASSWORD` only when it creates the database, so a new secret alone doesn't
+change the live password:
+1. Recreate the file as above, then set the same value in Postgres (read it at a hidden prompt):
+   ```bash
+   read -rs VALUE; echo
+   kubectl -n postgres exec -i postgres-0 -- psql -U postgres -v pass="$VALUE" \
+     <<<"SELECT format('ALTER ROLE postgres PASSWORD %L', :'pass') \gexec"
+   unset VALUE
+   ```
+   Inside the pod, local connections are trusted, so this works without the old password.
+2. PR and merge. Then check the next `pg-dump` run, or test it with `kubectl -n postgres create job --from=cronjob/pg-dump dump-test`.
+
+</details>
+
+### 🐘 Postgres app passwords
+
+<details>
+<summary><code>apps/prod/postgres/postgres-app-passwords.sops.yaml</code></summary>
+
+| | |
+|---|---|
+| Secret | `postgres-app-passwords` in `postgres`. One key per app: the key is the role and database name, the value its password |
+| Used by | the `app-databases` Job, which creates each role and database and sets the password. Each app gets a copy of its own password in its namespace (Authentik: M5 PR 5) |
+| Source | generated: `openssl rand` |
+| Keys | `authentik` |
+| Created | 27 Oct 2026 (M5 PR 4) |
+
+```bash
+cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
+A_AUTHENTIK=$(openssl rand -base64 32 | tr -d '/+=\n')
+f=apps/prod/postgres/postgres-app-passwords.sops.yaml
+kubectl create secret generic postgres-app-passwords -n postgres \
+  --from-literal=authentik="$A_AUTHENTIK" --dry-run=client -o yaml \
+| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
+unset A_AUTHENTIK
+grep -c 'ENC\[' "$f"
+```
+
+To read one back, for example to make the app's own copy (needs the private key):
+
+```bash
+sops -d --extract '["data"]["authentik"]' "$f" | base64 -d
+```
+
+➕ **Add an app, or 🔄 rotate one:** run `sops "$f"` and add or change the key under `stringData:` (sops re-encrypts it
+on save), or recreate the file with every key. Then bump `homelab/run` in `apps/base/postgres/app-databases-job.yaml`
+so the Job runs again and sets the password. Update the app's own copy in the same PR.
 
 </details>

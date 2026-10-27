@@ -1,0 +1,13 @@
+---
+# For the pods everything else depends on: Postgres (M5), then Authentik.
+# Under memory pressure on rpi-03 other pods are evicted first, and a
+# pending critical pod may preempt lower-priority ones. Below the system-*
+# classes, so the CNI and kubelet's own pods still win.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: homelab-critical
+value: 1000000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: "Shared data services: Postgres, Authentik."

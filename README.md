@@ -109,10 +109,11 @@ homelab-cluster/
       cloudflared/              # ✅ the homelab tunnel
       flux-notifications/       # ✅ Discord deploy notifications
       gateway/                  # ✅ shared Gateway, wildcard cert, HTTP → HTTPS
+      scheduling/               # ✅ homelab-critical PriorityClass
       storage/                  # ✅ local-nvme StorageClass
 
   apps/
-    base/<service>/             # one folder per service: ✅ whoami, gth-playground; ⏳ postgres,
+    base/<service>/             # one folder per service: ✅ whoami, gth-playground, postgres; ⏳
                                 #   authentik (M5), bottlebot, greentechhub (M6), jellyfin (M7)
     prod/<service>/             # overlays + SOPS secrets
 

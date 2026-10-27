@@ -62,6 +62,11 @@
       ],
     },
     {
+      description: "Postgres majors need a dump and restore, not a new image: only 18.x is offered. Raise the cap in the PR that does the upgrade.",
+      matchDepNames: ["postgres"],
+      allowedVersions: "<19",
+    },
+    {
       description: "Flux itself: the controller CLI version must match",
       matchDepNames: ["fluxcd/flux2"],
       automerge: false,

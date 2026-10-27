@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+    password: ENC[AES256_GCM,data:fvrog02wz81RAj/bdbheXU27BnkYS34HZdKN4Yxz8EHkCFwBaUw1BI2kRQHKhWa1sJkOAz5tYLE=,iv:uO4yIddI3Xq6EJCb6QK2XRVgF1AvDOIFQcBQFe5/hG8=,tag:09HQA2bDZvjb/xfX8bxJlQ==,type:str]
+kind: Secret
+metadata:
+    name: postgres-superuser
+    namespace: postgres
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA3TWlpeTBEelk5U1Vkdi9T
+            RHBrVWE3QUU1UUZBeG5EN1Qwd0NSWU5McTI4CmJJNUdyMmo1dW9EeHIwTHlYUksr
+            Wm9mVGMrYkhEdEhHbzJEWmVRLzhuMDgKLS0tIGxtL1lkTWxMekE2bGxzZ3FqSVpQ
+            MWR2b2RFY0lmY2wyUEVDcEZVMnFqVUUKm9bqiKiVgXu2O5X6cEg/pCDV3BnrKtLf
+            7B/hqV/kCOA2NNFZJLGyv/fjg0vOi+cxEh8F9kw9hD4YqQJm6W97Xw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age19k96we2u9cytex9zru4r0yaskqc88aryvh2mw5d7m2etjqschevqgyvrs5
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-10-27T05:57:29Z"
+    mac: ENC[AES256_GCM,data:UR2SJlDAVKp+ddobVvQU3Q84m1Xn0pYR9VR9Z9keSx7Q7yXDf+CglVS5JYGY7AiN/zc1iDkRpnk9RQ5AePZ0m5qFgmak2S/qpqx6O2hKNNY4wbgDB08dZzenf6IK0Ws+eQV1ISUfkc7GqLEo8Nm4BaXxS7yMsIhL8TaBtXzeVvw=,iv:5hCcrkGYLzeR0gjeopXT3mgx2IuhqbVVZgh2EFt+2vA=,tag:cSLnbdC2OtV7VQA3FU8sNg==,type:str]
+    version: 3.13.3

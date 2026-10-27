@@ -1,0 +1,15 @@
+---
+# Daily dumps (pg-dump-cronjob.yaml). Fetched home by HomeLab's
+# pg_dump_fetch.yml; moves to the NFS backup target with M4 PR 9.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-dumps
+  namespace: postgres
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-nvme
+  volumeName: postgres-dumps
+  resources:
+    requests:
+      storage: 20Gi
