@@ -28,7 +28,8 @@ bootstrapped.
 > M4 closes once the backup target is in place. See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md).
 >
 > **M5, the first workloads, is in progress.** The gth-ui playground is live, LAN only, at
-> `https://playground.home.green-tech-hub.com`. Postgres, Authentik and Grafana are next. See
+> `https://playground.home.green-tech-hub.com`, and shared Postgres 18 runs on rpi-03 with daily dumps. Authentik and
+> Grafana are next. See
 > [docs/M5_WORKLOADS.md](docs/M5_WORKLOADS.md) and the [Roadmap](#️-roadmap).
 
 **Quick links:** [🏗️ Architecture](#️-architecture) · [🗂️ Repo structure](#️-repo-structure) ·

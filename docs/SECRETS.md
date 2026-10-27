@@ -33,33 +33,44 @@ Nothing here can be decrypted any more. To recover:
 
 ## 🛠️ Recreating a secret
 
-1. **Where:** in WSL, from the root of the **Windows (OneDrive) clone**, on a branch made there. Commits are signed
-   from Windows, and WSL can't sign.
-   ```bash
-   cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
-   ```
-2. **Read the value** at a hidden prompt. It only goes through a pipe, so it never lands on disk or in shell history.
-   ```bash
-   read -rs VALUE; echo        # paste the value, press Enter (nothing is shown)
-   echo ${#VALUE}              # length only; 0 means nothing was stored, run read again
-   ```
-3. **Encrypt it straight into place.** `f`, the name, the namespace and the key come from the entry in the
-   inventory below.
-   ```bash
-   kubectl create secret generic <name> -n <namespace> \
-     --from-literal=<key>="$VALUE" --dry-run=client -o yaml \
-   | sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
-   unset VALUE
-   ```
-4. **Check it** before committing. Every value under `data:` must be `ENC[...]`:
-   ```bash
-   grep -c 'ENC\[' "$f"        # 2 or more: the value plus the sops MAC
-   ```
+In WSL, from the root of the **Windows (OneDrive) clone**, on a branch made there. Commits are signed from Windows,
+and WSL can't sign.
+
+```bash
+cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
+scripts/sops-secret.sh <file> <secret-name> <namespace> KEY=SOURCE [KEY=SOURCE...]
+```
+
+| SOURCE | Value |
+|---|---|
+| `gen` / `gen:N` | random, 40 (or N) characters of `A-Za-z0-9` |
+| `ask` | typed at a hidden prompt, twice |
+| `file:<path>` | a file's contents, e.g. a JSON credentials file |
+| `sops:<file>:<key>` | copied from another `*.sops.yaml` (needs the private key) |
+
+The script writes each value only to a private temp directory, removed on exit, and prints just its length. It
+encrypts straight into `<file>`, asks before replacing an existing one, and refuses to write the file unless every
+value is `ENC[...]`. Each inventory entry below gives its exact command.
 
 > [!TIP]
 > To change one value later, run `sops "$f"`. It opens the file decrypted in your editor and re-encrypts it on save
-> (needs the private key). For a file such as a JSON credentials file, use `--from-file=<key>=<path>` instead of
-> `read` + `--from-literal`.
+> (needs the private key). To read one value: `sops -d --extract '["data"]["<key>"]' "$f" | base64 -d`.
+
+<details>
+<summary>Without the script</summary>
+
+```bash
+read -rs VALUE; echo; echo ${#VALUE}        # hidden prompt; prints the length only
+kubectl create secret generic <name> -n <namespace> \
+  --from-literal=<key>="$VALUE" --dry-run=client -o yaml \
+| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
+unset VALUE
+grep -c 'ENC\[' "$f"        # 2 or more: the value plus the sops MAC
+```
+
+For a file, use `--from-file=<key>=<path>` instead of `read` + `--from-literal`.
+
+</details>
 
 ---
 
@@ -86,21 +97,18 @@ Nothing here can be decrypted any more. To recover:
 | Scope | Permissions: Zone · DNS · Edit, and Zone · Zone · Read. Zone resources: Include · Specific zone · `green-tech-hub.com`. No client IP filter, no expiry |
 | Created | 21 Oct 2026 ([#14](https://github.com/GreenMachine582/homelab-cluster/pull/14)) |
 
-After the `read`, check the token before encrypting it:
+Check the token first (`read -rs VALUE` to hold it without echoing):
 
 ```bash
 curl -s -H "Authorization: Bearer $VALUE" https://api.cloudflare.com/client/v4/user/tokens/verify
 # expect "success":true and "status":"active"
 ```
 
-Then:
+Then `unset VALUE` and paste it again at the script's prompt:
 
 ```bash
-f=infrastructure/configs/cert-manager/cloudflare-api-token.sops.yaml
-kubectl create secret generic cloudflare-api-token -n cert-manager \
-  --from-literal=api-token="$VALUE" --dry-run=client -o yaml \
-| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
-unset VALUE
+scripts/sops-secret.sh infrastructure/configs/cert-manager/cloudflare-api-token.sops.yaml \
+  cloudflare-api-token cert-manager api-token=ask
 ```
 
 🔄 **Rotate:**
@@ -124,15 +132,11 @@ unset VALUE
 | Needs | the cloudflared CLI (HomeLab `controller.yml -K --tags cloudflared`) and `~/.cloudflared/cert.pem` from `cloudflared tunnel login` |
 | Created | 21 Oct 2026 ([#18](https://github.com/GreenMachine582/homelab-cluster/pull/18)) |
 
-It's a file, so this one uses `--from-file`:
+It's a file, so this one uses `file:`:
 
 ```bash
-cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
-f=infrastructure/configs/cloudflared/tunnel-credentials.sops.yaml
-kubectl create secret generic cloudflared-tunnel-credentials -n cloudflared \
-  --from-file=credentials.json="$HOME/.cloudflared/<TUNNEL_ID>.json" --dry-run=client -o yaml \
-| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
-grep -c 'ENC\[' "$f"
+scripts/sops-secret.sh infrastructure/configs/cloudflared/tunnel-credentials.sops.yaml \
+  cloudflared-tunnel-credentials cloudflared credentials.json=file:$HOME/.cloudflared/<TUNNEL_ID>.json
 ```
 
 🩹 **Lost the JSON?** Regenerate it from the tunnel (needs `cert.pem`), then encrypt it as above:
@@ -167,14 +171,8 @@ the new tunnel is up. So instead:
 | Created | 21 Oct 2026 ([#20](https://github.com/GreenMachine582/homelab-cluster/pull/20)) |
 
 ```bash
-cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
-read -rs VALUE; echo; echo ${#VALUE}      # paste the webhook URL
-f=infrastructure/configs/flux-notifications/discord-webhook.sops.yaml
-kubectl create secret generic discord-webhook -n flux-system \
-  --from-literal=address="$VALUE" --dry-run=client -o yaml \
-| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
-unset VALUE
-grep -c 'ENC\[' "$f"
+scripts/sops-secret.sh infrastructure/configs/flux-notifications/discord-webhook.sops.yaml \
+  discord-webhook flux-system address=ask     # paste the webhook URL
 ```
 
 🔄 **Rotate:**
@@ -194,19 +192,12 @@ grep -c 'ENC\[' "$f"
 | Secret | `postgres-superuser` in `postgres`, key `password` |
 | Used by | the `postgres` StatefulSet (`POSTGRES_PASSWORD`, applied only on first start of an empty data directory), the `app-databases` Job and the `pg-dump` CronJob |
 | Source | generated: `openssl rand`. Nothing outside the cluster knows it |
-| Created | 27 Oct 2026 (M5 PR 4) |
+| Created | 27 Oct 2026 ([#36](https://github.com/GreenMachine582/homelab-cluster/pull/36)) |
 
-Generated straight into the variable, so it's never shown:
+Generated, so it's never shown:
 
 ```bash
-cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
-VALUE=$(openssl rand -base64 32 | tr -d '/+=\n'); echo ${#VALUE}
-f=apps/prod/postgres/postgres-superuser.sops.yaml
-kubectl create secret generic postgres-superuser -n postgres \
-  --from-literal=password="$VALUE" --dry-run=client -o yaml \
-| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
-unset VALUE
-grep -c 'ENC\[' "$f"
+scripts/sops-secret.sh apps/prod/postgres/postgres-superuser.sops.yaml postgres-superuser postgres password=gen
 ```
 
 🔄 **Rotate.** The image reads `POSTGRES_PASSWORD` only when it creates the database, so a new secret alone doesn't
@@ -234,17 +225,11 @@ change the live password:
 | Used by | the `app-databases` Job, which creates each role and database and sets the password. Each app gets a copy of its own password in its namespace (Authentik: M5 PR 5) |
 | Source | generated: `openssl rand` |
 | Keys | `authentik` |
-| Created | 27 Oct 2026 (M5 PR 4) |
+| Created | 27 Oct 2026 ([#36](https://github.com/GreenMachine582/homelab-cluster/pull/36)) |
 
 ```bash
-cd /mnt/c/Users/Chad/OneDrive/Desktop/Python-Projects/HomeLab/homelab-cluster
-A_AUTHENTIK=$(openssl rand -base64 32 | tr -d '/+=\n')
-f=apps/prod/postgres/postgres-app-passwords.sops.yaml
-kubectl create secret generic postgres-app-passwords -n postgres \
-  --from-literal=authentik="$A_AUTHENTIK" --dry-run=client -o yaml \
-| sops --encrypt --filename-override "$f" --input-type yaml --output-type yaml /dev/stdin > "$f"
-unset A_AUTHENTIK
-grep -c 'ENC\[' "$f"
+scripts/sops-secret.sh apps/prod/postgres/postgres-app-passwords.sops.yaml postgres-app-passwords postgres \
+  authentik=gen        # one KEY=gen per app. Re-running regenerates them all, so add an app with sops "$f"
 ```
 
 To read one back, for example to make the app's own copy (needs the private key):

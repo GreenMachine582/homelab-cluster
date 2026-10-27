@@ -99,7 +99,7 @@ the old one.
 
 - [ ] 🧪 Render what you changed: `kubectl kustomize apps/prod`, `kubectl kustomize infrastructure/configs` or
   `kubectl kustomize infrastructure/controllers`.
-- [ ] 🔐 Secrets only in `*.sops.yaml`, encrypted through a pipe as in [docs/SECRETS.md](docs/SECRETS.md) before
+- [ ] 🔐 Secrets only in `*.sops.yaml`, made with `scripts/sops-secret.sh` ([docs/SECRETS.md](docs/SECRETS.md)) before
   the first commit. `.sops.yaml` encrypts `data` and `stringData` only. **Never commit a plaintext Secret, not even
   on a branch: the repo is public.**
 - [ ] 📒 A PR that adds or changes a `*.sops.yaml` adds or updates its entry in [docs/SECRETS.md](docs/SECRETS.md):
