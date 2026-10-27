@@ -1,7 +1,11 @@
 # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
-# The default brand's title, and the embedded outpost's public URL. Login
-# needs no base URL (Authentik uses the request's host); authentik_host is
-# what forward-auth and proxy providers redirect to.
+# The default brand (GreenTechHub title, logo and favicon), and the embedded
+# outpost's public URL. Login needs no base URL (Authentik uses the request's
+# host); authentik_host is what forward-auth and proxy providers redirect to.
+#
+# The images come from greentechhub-ui (static/logo), pinned to a commit so
+# they only change in a PR. logo-light.png has a dark outline, so it reads on
+# both of Authentik's themes.
 version: 1
 metadata:
   name: homelab - Brand and outpost host
@@ -17,7 +21,9 @@ entries:
       domain: authentik-default
       default: true
     attrs:
-      branding_title: HomeLab
+      branding_title: GreenTechHub
+      branding_logo: https://raw.githubusercontent.com/GreenMachine582/greentechhub-ui/1878f335119a94e4ea7cad070f1121bc8ce4e334/src/greentechhub_ui/static/logo/logo-light.png
+      branding_favicon: https://raw.githubusercontent.com/GreenMachine582/greentechhub-ui/1878f335119a94e4ea7cad070f1121bc8ce4e334/src/greentechhub_ui/static/logo/favicon.png
 
   - model: authentik_outposts.outpost
     identifiers:
