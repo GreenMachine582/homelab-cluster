@@ -38,7 +38,7 @@ bootstrapped.
 [🗺️ Roadmap](#️-roadmap)
 
 **Docs:** [🧩 Adding a service](docs/ADDING_A_SERVICE.md) · [🔐 Secrets](docs/SECRETS.md) ·
-[🤝 Contributing](CONTRIBUTING.md) · [🧱 M4 plan + Cloudflare setup](docs/M4_PLATFORM.md) ·
+[🔑 Authentik](docs/AUTHENTIK.md) · [🤝 Contributing](CONTRIBUTING.md) · [🧱 M4 plan + Cloudflare setup](docs/M4_PLATFORM.md) ·
 [📦 M5 plan](docs/M5_WORKLOADS.md)
 
 ---
@@ -118,7 +118,7 @@ homelab-cluster/
                                 #   authentik; ⏳ bottlebot, greentechhub (M6), jellyfin (M7)
     prod/<service>/             # overlays + SOPS secrets
 
-  docs/                         # ADDING_A_SERVICE.md, SECRETS.md, M4_PLATFORM.md, M5_WORKLOADS.md
+  docs/                         # ADDING_A_SERVICE.md, AUTHENTIK.md, SECRETS.md, M4_PLATFORM.md, M5_WORKLOADS.md
 ```
 
 </details>

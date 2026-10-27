@@ -44,7 +44,7 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | 2 | homelab-cluster | **gth-playground**: namespace, Deployment, Service, `HTTPRoute` on `playground.home`, as in [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). Image pinned by version and digest (`0.20.0@sha256:…`; Renovate automerges releases) | 1; GHCR package made public (done) | [#23](https://github.com/GreenMachine582/homelab-cluster/pull/23) |
 | 3 | HomeLab | **Local volume directories**: `k8s_local_volumes` on rpi-03 creates `/mnt/nvme/k8s/<name>` with owner and mode (`postgres`, `postgres-dumps`, `prometheus`, `grafana`). Updates the `k8s_data_taint_enabled` comment | — | [HomeLab #42](https://github.com/GreenMachine582/HomeLab/pull/42) |
 | 4 | both | **Postgres**: StatefulSet, PV and PVC, Service, superuser secret, per-app database Job, `pg_dump` CronJob, `homelab-critical` PriorityClass. HomeLab: `pg_dump_fetch.yml` copies dumps home. Restore rehearsal documented | 3 | [#36](https://github.com/GreenMachine582/homelab-cluster/pull/36) + [HomeLab #44](https://github.com/GreenMachine582/HomeLab/pull/44) |
-| 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | [#38](https://github.com/GreenMachine582/homelab-cluster/pull/38); blueprints (MFA, brand, admins, Grafana app) in the next PR |
+| 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | [#38](https://github.com/GreenMachine582/homelab-cluster/pull/38); blueprints [#40](https://github.com/GreenMachine582/homelab-cluster/pull/40); auto-apply + per-app access groups in the next PR |
 | 6 | homelab-cluster | **Monitoring + Grafana**: slimmed `kube-prometheus-stack`, Prometheus and Grafana PVs, Alertmanager → `#homelab-alerts`, Grafana on `grafana.home` with Authentik OIDC | 3, 5; `#homelab-alerts` webhook. The Grafana application comes from a blueprint | To do |
 | 7 | both | **Exit + docs**: crash-loop and failed-Job alert tests (a temporary `test/` PR), dump restore, M5 marked done | 1–6 | To do |
 
@@ -75,22 +75,10 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
 
 ## Authentik blueprints
 
-Authentik's config lives in `apps/base/authentik/blueprints/`, one file per concern. kustomize puts them in the
-`authentik-blueprints` ConfigMap, and the worker applies them at start and whenever they change.
-
-| File | Sets |
-|---|---|
-| `mfa.yaml` | Default login flow: users without an MFA device must enroll one (TOTP or WebAuthn) |
-| `brand.yaml` | Default brand title `HomeLab`; embedded outpost `authentik_host` = `https://auth.home…` |
-| `admins.yaml` | Group `homelab-admins` (superuser; Grafana Admin in PR 6) |
-| `grafana.yaml` | OAuth2 provider + application `grafana`, client secret from `authentik-grafana-oidc` |
-
-- **Check they applied:** Admin interface → Customization → Blueprints. Each `homelab - …` entry should show
-  *successful*. Or run `kubectl -n authentik logs deploy/authentik-worker | grep -i blueprint`.
-- **Change them in git, not the UI.** UI edits to these objects are reverted on the next apply. Anything a blueprint
-  doesn't define, such as users and their group memberships, stays UI-managed.
-- **Syntax:** the [blueprint docs](https://docs.goauthentik.io/customize/blueprints/). `!Find` looks up an existing
-  object, `!KeyOf` refers to an entry in the same file, and `!Env` reads the worker's environment.
+Authentik's config lives in `apps/base/authentik/blueprints/`: MFA required, the brand and outpost host,
+`homelab-admins`, and the Grafana app with its `grafana-users` access group. A blueprint change restarts the worker,
+which applies them. [AUTHENTIK.md](AUTHENTIK.md) has the files, how changes apply, the access model (a
+`<slug>-users` group per application, plus `homelab-admins`), and how to add an application.
 
 ## What's needed from you
 
@@ -105,7 +93,8 @@ Authentik's config lives in `apps/base/authentik/blueprints/`, one file per conc
       more devices later: the user interface (`/if/user/`) → Settings → MFA Devices → Enroll.
    3. Create your own user (Admin interface → Directory → Users), add it to the **`homelab-admins`** group, and log in
       as it. Keep `akadmin` as break-glass.
-   4. The Grafana provider and application come from the `grafana` blueprint, so there's nothing to click.
+   4. The Grafana provider and application come from the `grafana` blueprint, so there's nothing to click. Add
+      anyone else who should use Grafana to `grafana-users` ([AUTHENTIK.md › Access](AUTHENTIK.md#-access)).
 
 ## Things to watch
 
