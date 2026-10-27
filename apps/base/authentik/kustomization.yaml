@@ -6,16 +6,25 @@ resources:
   - helmrepository.yaml
   - helmrelease.yaml
   - httproute.yaml
-# Authentik config as code (blueprints/): the chart mounts this ConfigMap and
-# the worker applies every file at start and whenever it changes. A fixed
-# name, because the HelmRelease refers to it.
+# Authentik config as code (blueprints/, docs/AUTHENTIK.md). The chart mounts
+# authentik-blueprints on the worker. Its name is fixed: the mount path
+# includes it, and Authentik keys each blueprint by path and name, so a new
+# path would clash. authentik-blueprints-hash holds the same files only for
+# its hashed name, which kustomizeconfig.yaml writes into a worker pod
+# annotation: any change restarts the worker, which applies every blueprint
+# at start. Keep both file lists the same.
+configurations:
+  - kustomizeconfig.yaml
 configMapGenerator:
   - name: authentik-blueprints
     namespace: authentik
-    files:
+    files: &blueprints
       - blueprints/mfa.yaml
       - blueprints/brand.yaml
       - blueprints/admins.yaml
       - blueprints/grafana.yaml
     options:
       disableNameSuffixHash: true
+  - name: authentik-blueprints-hash
+    namespace: authentik
+    files: *blueprints

@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
-# Grafana's OIDC client (M5 PR 6 logs in through it). The client secret comes
+# Grafana's OIDC client (M5 PR 6 logs in through it), and who may use it. The client secret comes
 # from the authentik-grafana-oidc secret (env AUTHENTIK_GRAFANA_CLIENT_SECRET);
 # Grafana gets a copy of the same value. The profile scope carries the
 # user's groups, which Grafana maps to roles.
@@ -38,9 +38,35 @@ entries:
         - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
 
   - model: authentik_core.application
+    id: app
     identifiers:
       slug: grafana
     attrs:
       name: Grafana
       provider: !KeyOf provider
       meta_launch_url: https://grafana.home.green-tech-hub.com
+
+  # Access (docs/AUTHENTIK.md › Access): homelab-admins and grafana-users
+  # only. Members are added in the UI. homelab-admins is listed by name only,
+  # so this file works whichever blueprint applies first; admins.yaml owns
+  # its settings.
+  - model: authentik_core.group
+    id: admins
+    identifiers:
+      name: homelab-admins
+  - model: authentik_core.group
+    id: users
+    identifiers:
+      name: grafana-users
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app
+      group: !KeyOf admins
+    attrs:
+      order: 0
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app
+      group: !KeyOf users
+    attrs:
+      order: 10
