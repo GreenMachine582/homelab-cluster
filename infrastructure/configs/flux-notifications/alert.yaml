@@ -29,6 +29,9 @@ spec:
     - kind: HelmRelease
       name: "*"
       namespace: cert-manager
+    - kind: HelmRelease
+      name: "*"
+      namespace: authentik
   # Routine, not news: dependsOn waits during a rollout.
   exclusionList:
     - "^Dependencies do not meet ready condition"
