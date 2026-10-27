@@ -5,7 +5,7 @@ Authentik (`https://auth.home.green-tech-hub.com`) is the cluster's single sign-
 in the UI, because the repo is public.
 
 **Quick links:** [📦 Blueprints](#-blueprints) · [🔄 How changes apply](#-how-changes-apply) ·
-[🚪 Access](#-access) · [➕ Adding an application](#-adding-an-application) · [🩺 Troubleshooting](#-troubleshooting)
+[🚪 Access](#-access) · [🔗 Social login](#-social-login) · [➕ Adding an application](#-adding-an-application) · [🩺 Troubleshooting](#-troubleshooting)
 
 ---
 
@@ -20,6 +20,7 @@ apply in doesn't matter.
 | `brand.yaml` | Default brand title `HomeLab`; embedded outpost `authentik_host` = `https://auth.home…` |
 | `admins.yaml` | Group `homelab-admins`: Authentik superusers, with access to every application |
 | `grafana.yaml` | OAuth2 provider + application `grafana` (client secret from `authentik-grafana-oidc`), group `grafana-users`, and its access bindings |
+| `sources.yaml` | GitHub, Google and Discord login sources (link-only, credentials from `authentik-social-sources`), the `homelab-source-authentication` flow (MFA, then login), and the buttons on the login page |
 
 - **Change them in git, not the UI.** UI edits to objects a blueprint defines are reverted on the next apply.
 - **Syntax:** the [blueprint docs](https://docs.goauthentik.io/customize/blueprints/).
@@ -63,6 +64,36 @@ bindings:
 - **Roles inside an app**, such as Grafana Viewer, Editor or Admin, come from the `groups` claim in the ID token
   (the `profile` scope). The app maps them in its own config. For example, Grafana's `role_attribute_path` (M5 PR 6)
   maps `homelab-admins` to Admin and everyone else to Viewer.
+
+## 🔗 Social login
+
+The login page has GitHub, Google and Discord buttons (`sources.yaml`). They're **link-only**:
+- No source has an enrollment flow, and users match by the provider's account ID, never by email. A social account
+  that isn't linked to an Authentik user is refused, and no user is created.
+- A social login still asks for the user's Authentik MFA device. Its flow, `homelab-source-authentication`, runs the
+  default MFA stage before logging in.
+- `akadmin` keeps password + MFA as the break-glass login. Don't link it.
+
+**Linking an account:** sign in with your password, open your user settings (the gear icon) → Connected services,
+and connect each provider. From then on that button signs you in.
+
+**Unlinking:** the same page, or Admin interface → Directory → Users → the user → Connected services.
+
+<details>
+<summary>🛠️ <b>Creating the provider apps</b></summary>
+
+Every provider gets the callback `https://auth.home.green-tech-hub.com/source/oauth/callback/<slug>/`, where the slug is
+`github`, `google` or `discord`. The browser carries the redirect, so `auth.home` doesn't need to be public.
+
+| Provider | Where | Notes |
+|---|---|---|
+| GitHub | Settings → Developer settings → OAuth Apps → New OAuth app | Homepage `https://auth.home.green-tech-hub.com`; generate a client secret |
+| Google | Cloud Console → a new project → Google Auth Platform | Audience *External*, then **publish** the app (Testing limits it to listed test users); data access scopes `openid`, `email`, `profile`; Clients → *Web application* with the callback as an authorized redirect URI |
+| Discord | Developer Portal → New Application → OAuth2 | Add the callback under Redirects; copy the client ID and reset the secret |
+
+Put the IDs and secrets in `authentik-social-sources` ([SECRETS.md](SECRETS.md#-authentik-social-login-sources)).
+
+</details>
 
 ## ➕ Adding an application
 
