@@ -44,7 +44,7 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | 2 | homelab-cluster | **gth-playground**: namespace, Deployment, Service, `HTTPRoute` on `playground.home`, as in [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). Image pinned by version and digest (`0.20.0@sha256:…`; Renovate automerges releases) | 1; GHCR package made public (done) | [#23](https://github.com/GreenMachine582/homelab-cluster/pull/23) |
 | 3 | HomeLab | **Local volume directories**: `k8s_local_volumes` on rpi-03 creates `/mnt/nvme/k8s/<name>` with owner and mode (`postgres`, `postgres-dumps`, `prometheus`, `grafana`). Updates the `k8s_data_taint_enabled` comment | — | [HomeLab #42](https://github.com/GreenMachine582/HomeLab/pull/42) |
 | 4 | both | **Postgres**: StatefulSet, PV and PVC, Service, superuser secret, per-app database Job, `pg_dump` CronJob, `homelab-critical` PriorityClass. HomeLab: `pg_dump_fetch.yml` copies dumps home. Restore rehearsal documented | 3 | [#36](https://github.com/GreenMachine582/homelab-cluster/pull/36) + [HomeLab #44](https://github.com/GreenMachine582/HomeLab/pull/44) |
-| 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | To do |
+| 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | This PR (after #37, the secrets script) |
 | 6 | homelab-cluster | **Monitoring + Grafana**: slimmed `kube-prometheus-stack`, Prometheus and Grafana PVs, Alertmanager → `#homelab-alerts`, Grafana on `grafana.home` with Authentik OIDC | 3, 5; `#homelab-alerts` webhook; Grafana application in Authentik | To do |
 | 7 | both | **Exit + docs**: crash-loop and failed-Job alert tests (a temporary `test/` PR), dump restore, M5 marked done | 1–6 | To do |
 
@@ -79,8 +79,14 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
    [SECRETS.md](SECRETS.md).
 2. ~~**Make the GHCR package public** after its first push (GitHub → Packages → `greentechhub-ui-playground` →
    Package settings → Change visibility).~~ Done: the image pulls without credentials.
-3. **Authentik first login** after PR 5, then create the Grafana OAuth2/OpenID provider and application (before
-   PR 6). The steps are recorded here once done, so a rebuild can repeat them.
+3. **Authentik first login** after PR 5:
+   1. Open `https://auth.home.green-tech-hub.com/if/flow/initial-setup/`. If it says the flow is done, go to
+      `https://auth.home.green-tech-hub.com/` instead. Log in as `akadmin` with the bootstrap password from
+      `authentik-secrets`, which you typed in and keep in your password manager.
+   2. Turn on MFA for `akadmin`: user settings → MFA devices → TOTP or WebAuthn.
+   3. Create your own user in the `authentik Admins` group. Then use that user, and keep `akadmin` as break-glass.
+   4. Before PR 6, create the Grafana OAuth2/OpenID provider and application. The steps are recorded here once done,
+      so a rebuild can repeat them.
 
 ## Things to watch
 

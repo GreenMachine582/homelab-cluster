@@ -83,6 +83,7 @@ For a file, use `--from-file=<key>=<path>` instead of `read` + `--from-literal`.
 | 💬 | [`discord-webhook.sops.yaml`](#-discord-webhook) | `flux-system` / `address` | Flux notifications, patch reminder |
 | 🐘 | [`postgres-superuser.sops.yaml`](#-postgres-superuser) | `postgres` / `password` | Postgres, `app-databases` Job, `pg-dump` CronJob |
 | 🐘 | [`postgres-app-passwords.sops.yaml`](#-postgres-app-passwords) | `postgres` / one key per app (`authentik`) | `app-databases` Job |
+| 🔑 | [`authentik-secrets.sops.yaml`](#-authentik-secrets) | `authentik` / `AUTHENTIK_SECRET_KEY`, `AUTHENTIK_POSTGRESQL__PASSWORD`, `AUTHENTIK_BOOTSTRAP_PASSWORD`, `AUTHENTIK_BOOTSTRAP_EMAIL` | Authentik server and worker |
 
 ### ☁️ Cloudflare API token
 
@@ -241,5 +242,40 @@ sops -d --extract '["data"]["authentik"]' "$f" | base64 -d
 ➕ **Add an app, or 🔄 rotate one:** run `sops "$f"` and add or change the key under `stringData:` (sops re-encrypts it
 on save), or recreate the file with every key. Then bump `homelab/run` in `apps/base/postgres/app-databases-job.yaml`
 so the Job runs again and sets the password. Update the app's own copy in the same PR.
+
+</details>
+
+### 🔑 Authentik secrets
+
+<details>
+<summary><code>apps/prod/authentik/authentik-secrets.sops.yaml</code></summary>
+
+| | |
+|---|---|
+| Secret | `authentik-secrets` in `authentik`, mounted as env by the chart (`authentik.existingSecret`) |
+| `AUTHENTIK_SECRET_KEY` | generated. Signs cookies and makes user IDs. **Never change it after the first start:** every session and some stored data break |
+| `AUTHENTIK_POSTGRESQL__PASSWORD` | copied from `postgres-app-passwords` › `authentik`. The two must match |
+| `AUTHENTIK_BOOTSTRAP_PASSWORD` | typed in, kept in your password manager. `akadmin`'s password, applied **only on the first start** of an empty database |
+| `AUTHENTIK_BOOTSTRAP_EMAIL` | typed in: `akadmin`'s email. It's in the secret so it stays out of this public repo |
+| Created | 27 Oct 2026 (M5 PR 5) |
+
+```bash
+scripts/sops-secret.sh apps/prod/authentik/authentik-secrets.sops.yaml authentik-secrets authentik \
+  AUTHENTIK_SECRET_KEY=gen:60 \
+  AUTHENTIK_POSTGRESQL__PASSWORD=sops:apps/prod/postgres/postgres-app-passwords.sops.yaml:authentik \
+  AUTHENTIK_BOOTSTRAP_PASSWORD=ask \
+  AUTHENTIK_BOOTSTRAP_EMAIL=ask
+```
+
+🩹 **Recreating it after a loss:** the secret key must be the one already in use, so don't regenerate it. Decrypt it
+from git history if needed, or pass it with `AUTHENTIK_SECRET_KEY=ask`. Only an empty database can take a new key.
+
+🔄 **Rotate:**
+- **Database password:** change `authentik` in `postgres-app-passwords` (`sops "$f"`) and bump `homelab/run` in
+  `app-databases-job.yaml`, then recreate this file with the same command. Keep the secret key: pass it as `ask` with
+  the current value. Merge both in one PR, then restart Authentik:
+  `kubectl -n authentik rollout restart deploy`.
+- **akadmin password:** change it in the Authentik UI. The bootstrap value isn't read again.
+- **Secret key:** don't.
 
 </details>

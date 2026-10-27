@@ -1,6 +1,8 @@
 # Applications: apps/prod, with SOPS decryption (the sops-age secret that
 # HomeLab's playbooks/flux_bootstrap.yml creates from the age key). Waits for
 # the platform layer (infrastructure.yaml, infrastructure-configs.yaml).
+# timeout 15m: Authentik's first install runs its migrations (HelmRelease
+# timeout 15m too), and wait: true waits for it.
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -21,5 +23,5 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  timeout: 5m0s
+  timeout: 15m0s
   wait: true

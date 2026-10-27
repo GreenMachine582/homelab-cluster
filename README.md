@@ -114,8 +114,8 @@ homelab-cluster/
       storage/                  # ✅ local-nvme StorageClass
 
   apps/
-    base/<service>/             # one folder per service: ✅ whoami, gth-playground, postgres; ⏳
-                                #   authentik (M5), bottlebot, greentechhub (M6), jellyfin (M7)
+    base/<service>/             # one folder per service: ✅ whoami, gth-playground, postgres,
+                                #   authentik; ⏳ bottlebot, greentechhub (M6), jellyfin (M7)
     prod/<service>/             # overlays + SOPS secrets
 
   docs/                         # ADDING_A_SERVICE.md, SECRETS.md, M4_PLATFORM.md, M5_WORKLOADS.md
