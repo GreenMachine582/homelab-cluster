@@ -17,7 +17,7 @@ apply in doesn't matter.
 | File | Sets |
 |---|---|
 | `mfa.yaml` | Default login flow: users without an MFA device must enroll one (TOTP or WebAuthn) |
-| `brand.yaml` | Default brand title `HomeLab`; embedded outpost `authentik_host` = `https://auth.home…` |
+| `brand.yaml` | Default brand: title `GreenTechHub`, with the logo and favicon from `greentechhub-ui` pinned to a commit (bump the SHA in a PR to change them); embedded outpost `authentik_host` = `https://auth.home…` |
 | `admins.yaml` | Group `homelab-admins`: Authentik superusers, with access to every application |
 | `grafana.yaml` | OAuth2 provider + application `grafana` (client secret from `authentik-grafana-oidc`), group `grafana-users`, and its access bindings |
 | `sources.yaml` | GitHub, Google and Discord login sources (link-only, credentials from `authentik-social-sources`), the `homelab-source-authentication` flow (MFA, then login), and the buttons on the login page |
