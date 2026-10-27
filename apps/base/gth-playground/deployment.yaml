@@ -28,10 +28,9 @@ spec:
           type: RuntimeDefault
       containers:
         - name: gth-playground
-          # Built by greentechhub-ui's playground-image workflow. Pinned to the
-          # dev build of #129 until a release tag carries the image; then
-          # X.Y.Z@digest.
-          image: ghcr.io/greenmachine582/greentechhub-ui-playground:sha-3643bba@sha256:1135644d84c8bc89278a27d863614d69a5ce6c15c248c268a80da8c8176331a7
+          # Built by greentechhub-ui's playground-image workflow from its
+          # release tags; Renovate bumps the version and digest.
+          image: ghcr.io/greenmachine582/greentechhub-ui-playground:0.20.0@sha256:280286f4685674fa400bd653e79d6dd75819b7acf1a532cbc36c57380491549d
           ports:
             - name: http
               containerPort: 8500
