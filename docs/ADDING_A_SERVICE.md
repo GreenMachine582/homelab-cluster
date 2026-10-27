@@ -139,6 +139,11 @@ spec:
 > Don't attach to the `http` listener. It only accepts routes from the `gateway` namespace, and redirects everything
 > to HTTPS.
 
+> [!TIP]
+> If the service has a login, sign in through Authentik instead of local accounts. Follow
+> [AUTHENTIK.md › Adding an application](AUTHENTIK.md#-adding-an-application): a blueprint, a `<slug>-users`
+> access group, and a client secret.
+
 ---
 
 ## 🔐 4. Secrets

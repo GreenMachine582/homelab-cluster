@@ -37,9 +37,9 @@ spec:
     authentik:
       existingSecret:
         secretName: authentik-secrets
-    # Config as code: blueprints/ via kustomization.yaml's configMapGenerator.
-    # Objects they define are reset to git on every apply, so change them
-    # there, not in the UI.
+    # Config as code: blueprints/ via kustomization.yaml's configMapGenerator
+    # (docs/AUTHENTIK.md). Objects they define are reset to git on every
+    # apply, so change them there, not in the UI.
     blueprints:
       configMaps:
         - authentik-blueprints
@@ -79,6 +79,10 @@ spec:
         limits: { memory: 1Gi }
     worker:
       replicas: 1
+      # kustomize replaces this with authentik-blueprints-hash's hashed name
+      # (kustomizeconfig.yaml), so a blueprint change restarts the worker.
+      podAnnotations:
+        homelab-blueprints: authentik-blueprints-hash
       containerSecurityContext: *container
       # Not on rpi-01 (2 GB; docs/M5_WORKLOADS.md › Placement).
       affinity:

@@ -1,0 +1,10 @@
+# Writes the hash-suffixed name of authentik-blueprints-hash (same files as
+# authentik-blueprints) into a worker pod annotation. A blueprint edit then
+# changes the HelmRelease, Helm rolls the worker, and the worker applies every
+# blueprint at start.
+nameReference:
+  - kind: ConfigMap
+    version: v1
+    fieldSpecs:
+      - kind: HelmRelease
+        path: spec/values/worker/podAnnotations/homelab-blueprints
