@@ -59,7 +59,9 @@ remote site, with static LAN IPs. Everything is managed from home over Tailscale
 > **Envoy only runs on laptop-01 and rpi-03.** The Pi 4 kernel has a 39-bit virtual address space, and Envoy's
 > tcmalloc needs 48-bit. So the Pi 4s are labelled `homelab/l7-proxy=unsupported`, and `cilium-envoy` is pinned to
 > `supported`. Anything that needs L7/FQDN/TLS policy, or serves through the Gateway, must select
-> `homelab/l7-proxy: supported`. In practice that's rpi-03.
+> `homelab/l7-proxy: supported`. In practice that's rpi-03. The Pi 4 agents run with the L7 proxy off
+> (`infrastructure/configs/cilium/node-config-no-l7-proxy.yaml`); otherwise their new pods wait on an Envoy that isn't
+> there and never get networking.
 
 <details>
 <summary>🔀 <b>How changes flow, and the reconciliation order</b></summary>
