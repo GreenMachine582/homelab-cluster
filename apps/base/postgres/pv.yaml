@@ -1,0 +1,51 @@
+---
+# Local volumes on rpi-03's NVMe. HomeLab's k8s_local_volumes role creates
+# the directories, owned by 999 (the postgres image's user). Each PV has a
+# claimRef, so only its own claim can bind it, including after a rebuild:
+# re-applying these re-attaches the data that's still on disk. Retain: deleting
+# a PV or PVC never deletes the data.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-data
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-nvme
+  claimRef:
+    namespace: postgres
+    name: data-postgres-0    # the StatefulSet's volumeClaimTemplate
+  local:
+    path: /mnt/nvme/k8s/postgres
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [rpi-03]
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-dumps
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-nvme
+  claimRef:
+    namespace: postgres
+    name: postgres-dumps
+  local:
+    path: /mnt/nvme/k8s/postgres-dumps
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [rpi-03]

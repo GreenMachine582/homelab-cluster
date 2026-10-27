@@ -1,0 +1,8 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base/postgres
+  # Created in WSL, see docs/SECRETS.md.
+  - postgres-superuser.sops.yaml
+  - postgres-app-passwords.sops.yaml
