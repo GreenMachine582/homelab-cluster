@@ -1,8 +1,8 @@
 ---
 # Daily pg_dumpall of every database, gzipped, newest 7 kept, on the
-# postgres-dumps PV (rpi-03, next to the data). HomeLab's pg_dump_fetch.yml
-# copies them home; that's the only off-node copy until the NFS backup target
-# (M4 PR 9). A failed run leaves a failed Job, which KubeJobFailed alerts on
+# postgres-dumps PV (rpi-03, next to the data). pg-dump-offnode copies each
+# one to the backup drive on rpi-02, and HomeLab's pg_dump_fetch.yml copies
+# them home. A failed run leaves a failed Job, which KubeJobFailed alerts on
 # (HomeLab alert_test.yml tests it).
 # Test run: kubectl -n postgres create job --from=cronjob/pg-dump dump-test
 apiVersion: batch/v1

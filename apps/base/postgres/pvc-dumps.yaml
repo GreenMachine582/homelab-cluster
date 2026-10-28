@@ -1,6 +1,6 @@
 ---
-# Daily dumps (pg-dump-cronjob.yaml). Fetched home by HomeLab's
-# pg_dump_fetch.yml; moves to the NFS backup target with M4 PR 9.
+# Daily dumps (pg-dump-cronjob.yaml). Copied to the backup drive by
+# pg-dump-offnode-cronjob.yaml and fetched home by HomeLab's pg_dump_fetch.yml.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

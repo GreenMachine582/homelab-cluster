@@ -71,6 +71,11 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
   ```
 - **Test a dump:** `kubectl -n postgres create job --from=cronjob/pg-dump dump-test`, then
   `kubectl -n postgres logs job/dump-test` lists `/dumps`. HomeLab's `pg_dump_fetch.yml` copies the newest home.
+- **Copy to the backup drive:** `pg-dump-offnode` (03:15) copies the newest dump to the backup drive on rpi-02
+  (`postgres-dumps-offnode`, NFS) and keeps 30 there. Test it with
+  `kubectl -n postgres create job --from=cronjob/pg-dump-offnode offnode-test`, then read `logs job/offnode-test`.
+  When the drive is down, the pod waits on the mount until the 30-minute deadline and the Job fails, so
+  `KubeJobFailed` alerts. `pg-dump` itself still runs. Set up in HomeLab `docs/K8S_CLUSTER.md` › Backup drive.
 - **PV recovery:** the PVs are `Retain` and each has a `claimRef`. After a cluster rebuild, or if a PVC was deleted,
   the data is still on rpi-03. Delete the old PV object if it's `Released` (`kubectl delete pv postgres-data`), and
   Flux recreates it from git, already bound to its claim. Never delete `/mnt/nvme/k8s/postgres` itself.
