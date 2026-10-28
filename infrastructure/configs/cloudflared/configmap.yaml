@@ -8,6 +8,10 @@
 # <name>.home.green-tech-hub.com: that SNI matches the wildcard certificate
 # (so TLS to the origin is verified), and that Host matches the service's
 # existing HTTPRoute. The Gateway, certificate and routes don't change.
+#
+# Every hostname here must pass scripts/public-guard.py (CI): the namespace it
+# reaches is hardened first. docs/ADDING_A_SERVICE.md "Before going public".
+# whoami was taken off in M5.5 PR 1 and returns, hardened, in PR 3.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -23,9 +27,4 @@ data:
     # the default (auto) each QUIC attempt burns ~10 s before falling back.
     protocol: http2
     ingress:
-      - hostname: whoami.green-tech-hub.com
-        service: https://cilium-gateway-homelab.gateway.svc.cluster.local:443
-        originRequest:
-          originServerName: whoami.home.green-tech-hub.com
-          httpHostHeader: whoami.home.green-tech-hub.com
       - service: http_status:404

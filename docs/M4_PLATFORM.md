@@ -72,7 +72,7 @@ Update this table whenever the dashboard changes.
 | LAN wildcard record | green-tech-hub.com → DNS → Records | Type `A`, name `*.home`, IPv4 `192.168.50.240` (the Gateway, `infrastructure/configs/gateway/gateway.yaml`), **DNS only** (grey cloud), TTL Auto | Every `*.home.green-tech-hub.com` service |
 | Apex record + tunnel route | DNS → Records; Zero Trust → Networks → Tunnels | Pre-existing, proxied apex `green-tech-hub.com` routed through a tunnel to `https://localhost:8080`. Not managed by this repo | Outside the cluster |
 | `homelab` tunnel | Zero Trust → Networks → Tunnels | Locally managed (the dashboard shows it but its ingress rules live in `infrastructure/configs/cloudflared/configmap.yaml`). ID `0906ae8b-a6d6-49d7-80f4-6bc4d724fcca`. Created in WSL with `cloudflared tunnel login` (writes `~/.cloudflared/cert.pem`, pick `green-tech-hub.com`) then `cloudflared tunnel create homelab`. Credentials: [SECRETS.md](SECRETS.md) | cloudflared |
-| Public `whoami` record | DNS → Records | `CNAME` `whoami` → `0906ae8b-a6d6-49d7-80f4-6bc4d724fcca.cfargotunnel.com`, **proxied**. Created with `cloudflared tunnel route dns homelab whoami.green-tech-hub.com` | Public whoami (M4 exit test) |
+| ~~Public `whoami` record~~ | DNS → Records | **Deleted in M5.5 PR 1** with its tunnel rule; whoami wasn't hardened. It comes back in M5.5 PR 3 as the public listener's test. Was: `CNAME` `whoami` → `0906ae8b-a6d6-49d7-80f4-6bc4d724fcca.cfargotunnel.com`, proxied, from `cloudflared tunnel route dns homelab whoami.green-tech-hub.com` | Public whoami (M4 exit test) |
 
 Notes:
 - The A record must stay **DNS only**. Proxied, Cloudflare would answer with its own IPs and couldn't reach a
@@ -83,6 +83,25 @@ Notes:
 - Check it: `nslookup whoami.home.green-tech-hub.com 1.1.1.1` and the same against the local resolver should
   both give `192.168.50.240`. If only the local resolver returns nothing, it's dropping private-IP answers
   (DNS-rebind protection). The home ASUS router doesn't (checked 21 Oct 2026).
+
+### Cloudflare edge settings
+
+The zone-wide settings every public host relies on (M5.5, decision 43). Check them before each new public host, and
+tick them here with the date once they're set.
+
+| Done | Setting | Where in the dashboard | Value |
+|---|---|---|---|
+| ☐ | Encryption mode | SSL/TLS → Overview | **Full (strict)** |
+| ☐ | Minimum TLS version | SSL/TLS → Edge Certificates | **TLS 1.2** |
+| ☐ | Always Use HTTPS | SSL/TLS → Edge Certificates | **On** |
+| ☐ | HSTS | SSL/TLS → Edge Certificates → HSTS | On, max-age 6 months to start, `includeSubDomains` **off** (the pre-existing apex isn't covered by this repo) |
+| ☐ | Bot Fight Mode | Security → Bots | **On** |
+| ☐ | DNS records | DNS → Records | One explicit proxied CNAME per public host. **No wildcard** pointing at the tunnel |
+
+> [!NOTE]
+> Full (strict) is zone-wide, and it sets how Cloudflare connects to an origin. Tunnelled hosts, including the
+> pre-existing apex, reach their origin through cloudflared, which does its own TLS (`originServerName`), so they
+> shouldn't be affected. Check the apex still loads after switching anyway.
 
 **Publishing or removing a service:** see [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md) §6 and §8. Add every record
 created there to the table above.
