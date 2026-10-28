@@ -116,7 +116,7 @@ how to run it locally: [docs/ADDING_A_SERVICE.md › Before going public](docs/A
 - [ ] 📒 A PR that adds or changes a `*.sops.yaml` adds or updates its entry in [docs/SECRETS.md](docs/SECRETS.md):
   what it holds, where the value comes from, and the commands to recreate it.
 - [ ] ☁️ Anything set up by hand (Cloudflare dashboard, DNS, tunnel) is recorded in the
-  [Cloudflare setup](docs/M4_PLATFORM.md#cloudflare-setup-manual) table.
+  [Cloudflare setup](docs/CLOUDFLARE.md#-cloudflare-setup-manual) table.
 - [ ] 📌 Helm charts and images are pinned to exact versions. Renovate (`.github/renovate.json5`) opens the bumps
   and automerges minor and patch ones. To hold a version, give it a `packageRules` entry with an `allowedVersions`
   cap, `dependencyDashboardApproval: true` and a description saying why. The cap is the hold: approving an update in

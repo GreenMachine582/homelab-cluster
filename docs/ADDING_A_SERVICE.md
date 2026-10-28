@@ -202,7 +202,7 @@ python3 scripts/public-guard.py /tmp/apps.yaml /tmp/infra.yaml
 - [ ] **No unreviewed automerge.** The app's image and chart get no Renovate `automerge` rule, so every update to a
   public app is reviewed.
 - [ ] **An explicit DNS record** for the host. Never a wildcard CNAME to the tunnel.
-- [ ] The Cloudflare [edge settings](M4_PLATFORM.md#cloudflare-edge-settings) are still in place.
+- [ ] The Cloudflare [edge settings](CLOUDFLARE.md#-cloudflare-edge-settings) are still in place.
 - [ ] You know how to cut it off: [INCIDENT.md › Kill switch](INCIDENT.md#️-kill-switch).
 
 ### Publishing
@@ -224,7 +224,7 @@ certificate serve it, and nothing on the Gateway changes.
    ```bash
    cloudflared tunnel route dns homelab <name>.green-tech-hub.com
    ```
-4. Add the record to the [Cloudflare setup](M4_PLATFORM.md#cloudflare-setup-manual) table.
+4. Add the record to the [Cloudflare setup](CLOUDFLARE.md#-cloudflare-setup-manual) table.
 
 > [!NOTE]
 > Until M5.5 adds the public Gateway listener, public names are rewritten to their `.home` name, so the guard

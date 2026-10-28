@@ -26,7 +26,8 @@ bootstrapped.
 > - Discord deploy notifications
 > - the backup drive on rpi-02 (NFS), with daily copies of the etcd snapshots and Postgres dumps
 >
-> See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md).
+> Design notes are under [Platform stack](#-platform-stack); the Cloudflare side is in
+> [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md).
 >
 > **✅ M5, the first workloads, is done.** The gth-ui playground (LAN only), shared Postgres 18 with daily dumps,
 > Authentik, and Grafana with alerts to Discord are live. The alert path and a dump restore are tested. Next is M5.5,
@@ -39,7 +40,8 @@ bootstrapped.
 [🗺️ Roadmap](#️-roadmap)
 
 **Docs:** [🧩 Adding a service](docs/ADDING_A_SERVICE.md) · [🔐 Secrets](docs/SECRETS.md) ·
-[🔑 Authentik](docs/AUTHENTIK.md) · [🤝 Contributing](CONTRIBUTING.md) · [🧱 M4 plan + Cloudflare setup](docs/M4_PLATFORM.md) ·
+[🔑 Authentik](docs/AUTHENTIK.md) · [🤝 Contributing](CONTRIBUTING.md) · [☁️ Cloudflare](docs/CLOUDFLARE.md) ·
+[🚨 Incidents](docs/INCIDENT.md) ·
 [📦 M5 plan](docs/M5_WORKLOADS.md)
 
 ---
@@ -118,7 +120,7 @@ homelab-cluster/
                                 #   authentik, monitoring; ⏳ bottlebot, greentechhub (M6), jellyfin (M7)
     prod/<service>/             # overlays + SOPS secrets
 
-  docs/                         # ADDING_A_SERVICE.md, AUTHENTIK.md, SECRETS.md, M4_PLATFORM.md, M5_WORKLOADS.md
+  docs/                         # ADDING_A_SERVICE.md, AUTHENTIK.md, SECRETS.md, CLOUDFLARE.md, INCIDENT.md, M5_WORKLOADS.md
 ```
 
 </details>
@@ -145,6 +147,45 @@ homelab-cluster/
 | 📈 | kube-prometheus-stack | Prometheus, Grafana, Alertmanager (slimmed, no control-plane scraping) | `monitoring` | ✅ |
 | 📜 | Loki + Alloy | Log storage and collection | `monitoring` | 📋 Backlog |
 
+<details>
+<summary><b>Design notes</b> (decided in M4)</summary>
+
+- **Domain:** `green-tech-hub.com` on Cloudflare. LAN services are `*.home.green-tech-hub.com`; public ones are
+  `<name>.green-tech-hub.com` through the tunnel.
+- **LAN names:** one public record, `*.home` A `192.168.50.240`, DNS only. Every device on the site LAN resolves
+  every service, with no hosts files and no DNS change per service. The cost: a private IP is visible in public DNS.
+  Pi-hole split horizon is in the backlog.
+- **Certificates:** Let's Encrypt through cert-manager, DNS-01 against Cloudflare, so no inbound ports. One wildcard
+  `*.home` certificate on the Gateway. New certificates go through `letsencrypt-staging` first (production rate
+  limits are tight).
+- **LoadBalancer IPs:** Cilium LB-IPAM, pool `192.168.50.240–.250`, announced by Cilium L2 (ARP). The router's DHCP
+  pool was shrunk to `.30–.239` to make room.
+- **Where L2 answers:** only nodes labelled `homelab/l7-proxy=supported` (laptop-01, rpi-03), because the Gateway's
+  traffic goes through Envoy, which can't run on the Pi 4s.
+- **Gateway:** Cilium Gateway API (CRDs imported by commit through a pinned Flux source, not vendored). One shared
+  `gateway/homelab` on `192.168.50.240`: an HTTPS listener with the wildcard cert, and HTTP → HTTPS. Services attach
+  an `HTTPRoute` to `sectionName: https`.
+- **Storage:** `local-nvme` (no provisioner, `WaitForFirstConsumer`, `Retain`). Each workload brings its own PV
+  under `/mnt/nvme/k8s/<name>` on rpi-03.
+- **Public access:** cloudflared with a locally managed tunnel: ingress rules in git, credentials as a SOPS secret,
+  forwarding to the Gateway inside the cluster ([docs/CLOUDFLARE.md](docs/CLOUDFLARE.md)).
+- **Cilium values:** Flux owns them. HomeLab's install seed keeps only core networking; Gateway API and L2
+  announcements are Flux-only, so a rebuild comes up as a plain CNI and Flux finishes it.
+
+</details>
+
+<details>
+<summary><b>Things to know</b></summary>
+
+- **L2 failover:** one supported node answers ARP for a pool IP at a time (a lease). If it goes down, the other
+  takes over within about 15 s. With only laptop-01 and rpi-03 eligible, both down means the Gateway is unreachable.
+- **After a rebuild:** if the Gateway stays `Programmed: False` once Flux has upgraded Cilium, restart
+  `deploy/cilium-operator` once. It only checks for the Gateway API CRDs at start.
+- **DNS-01:** cert-manager checks propagation against public resolvers (`1.1.1.1`, `8.8.8.8`), not the site router,
+  so a router DNS quirk can't stall issuance.
+
+</details>
+
 ---
 
 ## 🌐 Network
@@ -158,7 +199,7 @@ homelab-cluster/
 | 🔑 **Admin access** | `kubectl` from WSL on the main PC over Tailscale. Node SSH and Tailscale are managed in HomeLab. From home, the site LAN is only reachable while laptop-01's subnet route is approved |
 
 Manual Cloudflare setup (token, records, tunnel) is recorded in
-[M4_PLATFORM.md › Cloudflare setup](docs/M4_PLATFORM.md#cloudflare-setup-manual).
+[CLOUDFLARE.md › Cloudflare setup](docs/CLOUDFLARE.md#-cloudflare-setup-manual).
 
 ---
 
@@ -290,7 +331,7 @@ PR is merged.
 | M1        | Nodes on the LAN: switch moved, nodes bootstrapped by Ansible | ✅ Done |
 | M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | ✅ Done |
 | M3        | Flux bootstrap, SOPS, branch protection, Cilium adopted      | ✅ Done |
-| M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS ([plan](docs/M4_PLATFORM.md)) | ✅ Done |
+| M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS ([plan, archived](https://github.com/GreenMachine582/homelab-cluster/blob/96c1ec73b2e46771afb2eed673d320223b871138/docs/M4_PLATFORM.md)) | ✅ Done |
 | M5        | gth-ui playground, Postgres, Authentik, Grafana + minimal alerting ([plan](docs/M5_WORKLOADS.md)) | ✅ Done |
 | M5.5      | Public playground behind Authentik: network policies, public listener, invite-only sign-up, hardening | 🚧 In progress |
 | M6        | BottleBot, GreenTechHub (multi-arch GHCR builds)             | ⏳ Pending |

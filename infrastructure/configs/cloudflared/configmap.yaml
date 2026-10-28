@@ -2,7 +2,7 @@
 # The locally managed "homelab" tunnel (M4): ingress rules live here, not in
 # the Cloudflare dashboard. Each public hostname also needs its DNS record:
 #   cloudflared tunnel route dns homelab <name>.green-tech-hub.com
-# See docs/M4_PLATFORM.md "Cloudflare setup".
+# See docs/CLOUDFLARE.md.
 #
 # Public <name>.green-tech-hub.com goes to the shared Gateway as the LAN name
 # <name>.home.green-tech-hub.com: that SNI matches the wildcard certificate

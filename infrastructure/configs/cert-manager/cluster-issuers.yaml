@@ -1,6 +1,6 @@
 # Let's Encrypt issuers, DNS-01 via Cloudflare (M4). Use letsencrypt-staging
 # first for a new certificate, then switch to letsencrypt: the production
-# rate limits are tight. See docs/M4_PLATFORM.md.
+# rate limits are tight. See README.md "Design notes".
 #
 # The Cloudflare token (cloudflare-api-token.sops.yaml) is scoped to Zone:DNS
 # Edit + Zone Read on green-tech-hub.com. A ClusterIssuer reads its secrets
