@@ -17,7 +17,7 @@
 #
 # Flux-only values (not in HomeLab's seed; a rebuild starts with a plain CNI
 # and Flux upgrades it): gatewayAPI and l2announcements, M4. See
-# docs/M4_PLATFORM.md.
+# README.md "Design notes".
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:

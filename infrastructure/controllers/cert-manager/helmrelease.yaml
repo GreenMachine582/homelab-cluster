@@ -1,7 +1,7 @@
 ---
 # cert-manager: TLS certificates for the Gateway (M4). The ClusterIssuers
 # (Let's Encrypt DNS-01 via Cloudflare) live in infrastructure/configs, so
-# they apply after these CRDs exist. See docs/M4_PLATFORM.md.
+# they apply after these CRDs exist. See README.md "Design notes".
 #
 # Gateway API support (config.enableGatewayAPI) stays off: the Gateway
 # references a Certificate created explicitly, and the gateway-shim would
