@@ -153,6 +153,8 @@ entries:
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       client_type: confidential
+      # Required: without it the provider has no grant types (troubleshooting below).
+      grant_types: [authorization_code, refresh_token]
       client_id: <slug>
       client_secret: !Env AUTHENTIK_<SLUG>_CLIENT_SECRET
       redirect_uris:
@@ -217,6 +219,20 @@ entries:
 
 On 27 Oct 2026, the first start after the blueprints landed queued discovery but never ran it. The blueprints were
 then applied by hand with step 3.
+
+</details>
+
+<details>
+<summary>🚫 <b>An app's login fails with <code>invalid_request</code></b></summary>
+
+The app gets `error=invalid_request`, `error_description=The request is otherwise malformed` back from Authentik.
+Grafana shows it as *Login provider denied login request*, and logs the real error:
+`kubectl -n monitoring logs deploy/kps-grafana -c grafana | grep 'failed to login'`.
+
+The usual cause is that the OAuth2 provider has no grant types. Since 2026.x, a provider's `grant_types` defaults to
+empty, and the authorize endpoint rejects a grant type that isn't listed. Set
+`grant_types: [authorization_code, refresh_token]` in its blueprint, as the template does. Check it under Admin →
+Applications → Providers → the provider. Found on Grafana, 28 Oct 2026.
 
 </details>
 
