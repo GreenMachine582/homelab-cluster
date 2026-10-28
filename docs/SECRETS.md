@@ -84,7 +84,10 @@ For a file, use `--from-file=<key>=<path>` instead of `read` + `--from-literal`.
 | 🐘 | [`postgres-superuser.sops.yaml`](#-postgres-superuser) | `postgres` / `password` | Postgres, `app-databases` Job, `pg-dump` CronJob |
 | 🐘 | [`postgres-app-passwords.sops.yaml`](#-postgres-app-passwords) | `postgres` / one key per app (`authentik`) | `app-databases` Job |
 | 🔑 | [`authentik-secrets.sops.yaml`](#-authentik-secrets) | `authentik` / `AUTHENTIK_SECRET_KEY`, `AUTHENTIK_POSTGRESQL__PASSWORD`, `AUTHENTIK_BOOTSTRAP_PASSWORD`, `AUTHENTIK_BOOTSTRAP_EMAIL` | Authentik server and worker |
-| 📈 | [`authentik-grafana-oidc.sops.yaml`](#-authentik-grafana-oidc-client) | `authentik` / `AUTHENTIK_GRAFANA_CLIENT_SECRET` | the `grafana` blueprint (OAuth2 provider); Grafana's copy in PR 6 |
+| 📈 | [`authentik-grafana-oidc.sops.yaml`](#-authentik-grafana-oidc-client) | `authentik` / `AUTHENTIK_GRAFANA_CLIENT_SECRET` | the `grafana` blueprint (OAuth2 provider) |
+| 📈 | [`grafana-oidc.sops.yaml`](#-grafana-oidc-client-secret) | `monitoring` / `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET` | Grafana's Authentik login (a copy of the one above) |
+| 📈 | [`grafana-admin.sops.yaml`](#-grafana-admin) | `monitoring` / `admin-user`, `admin-password` | Grafana's local admin (break-glass) |
+| 🚨 | [`alertmanager-discord.sops.yaml`](#-alertmanager-discord-webhook) | `monitoring` / `url` | Alertmanager → `#homelab-alerts` |
 | 🔗 | [`authentik-social-sources.sops.yaml`](#-authentik-social-login-sources) | `authentik` / `AUTHENTIK_{GITHUB,GOOGLE,DISCORD}_CLIENT_{ID,SECRET}` | the `sources` blueprint (GitHub, Google and Discord login) |
 
 ### ☁️ Cloudflare API token
@@ -290,7 +293,7 @@ from git history if needed, or pass it with `AUTHENTIK_SECRET_KEY=ask`. Only an 
 | | |
 |---|---|
 | Secret | `authentik-grafana-oidc` in `authentik`, key `AUTHENTIK_GRAFANA_CLIENT_SECRET`, as env on the server and worker (`global.envFrom`) |
-| Used by | `apps/base/authentik/blueprints/grafana.yaml` (`client_secret: !Env …`). Grafana's own secret (M5 PR 6) holds a copy, and the two must match |
+| Used by | `apps/base/authentik/blueprints/grafana.yaml` (`client_secret: !Env …`). Grafana's [`grafana-oidc`](#-grafana-oidc-client-secret) holds a copy, and the two must match |
 | Source | generated |
 | Created | 27 Oct 2026 (Authentik blueprints PR) |
 
@@ -299,11 +302,10 @@ scripts/sops-secret.sh apps/prod/authentik/authentik-grafana-oidc.sops.yaml auth
   AUTHENTIK_GRAFANA_CLIENT_SECRET=gen:64
 ```
 
-Grafana's copy, in PR 6, uses the source `sops:apps/prod/authentik/authentik-grafana-oidc.sops.yaml:AUTHENTIK_GRAFANA_CLIENT_SECRET`.
-
-🔄 **Rotate:** recreate this file and Grafana's copy in one PR. A changed Secret doesn't restart pods, so after the
-merge run `kubectl -n authentik rollout restart deploy`. The worker re-applies the blueprints at start, with the new
-value.
+🔄 **Rotate:** recreate this file, then Grafana's copy from it, in one PR. A changed Secret doesn't restart pods, so
+after the merge run `kubectl -n authentik rollout restart deploy` and
+`kubectl -n monitoring rollout restart deploy/kps-grafana`. The worker re-applies the blueprints at start, with the
+new value.
 
 </details>
 
@@ -326,5 +328,81 @@ scripts/sops-secret.sh apps/prod/authentik/authentik-social-sources.sops.yaml au
 🔄 **Rotate:** make a new secret in the provider's console, recreate this file with the same command (the other
 providers' current values passed as `ask`), merge, then run `kubectl -n authentik rollout restart deploy`. Delete the
 old secret in the console once a login works.
+
+</details>
+
+### 📈 Grafana OIDC client secret
+
+<details>
+<summary><code>apps/prod/monitoring/grafana-oidc.sops.yaml</code></summary>
+
+| | |
+|---|---|
+| Secret | `grafana-oidc` in `monitoring`, key `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET`, as env on Grafana (`grafana.envFromSecret`) |
+| Used by | Grafana's "Sign in with Authentik" (`auth.generic_oauth` in `apps/base/monitoring/helmrelease.yaml`) |
+| Source | copied from [`authentik-grafana-oidc`](#-authentik-grafana-oidc-client). The two must match |
+| Created | 28 Oct 2026 (M5 PR 6) |
+
+```bash
+scripts/sops-secret.sh apps/prod/monitoring/grafana-oidc.sops.yaml grafana-oidc monitoring \
+  GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=sops:apps/prod/authentik/authentik-grafana-oidc.sops.yaml:AUTHENTIK_GRAFANA_CLIENT_SECRET
+```
+
+🔄 **Rotate:** with the Authentik file, as in [its section](#-authentik-grafana-oidc-client).
+
+</details>
+
+### 📈 Grafana admin
+
+<details>
+<summary><code>apps/prod/monitoring/grafana-admin.sops.yaml</code></summary>
+
+| | |
+|---|---|
+| Secret | `grafana-admin` in `monitoring`, keys `admin-user` and `admin-password` (`grafana.admin.existingSecret`) |
+| Used by | Grafana's local admin: the break-glass login when Authentik is down. Sign in with the username/password form below the Authentik button |
+| Source | `admin-user` typed in (`admin`); `admin-password` generated, read it back with `sops -d` when needed |
+| Created | 28 Oct 2026 (M5 PR 6) |
+
+```bash
+scripts/sops-secret.sh apps/prod/monitoring/grafana-admin.sops.yaml grafana-admin monitoring \
+  admin-user=ask admin-password=gen:40      # type admin at the prompt
+```
+
+To read the password (needs the private key):
+
+```bash
+sops -d --extract '["data"]["admin-password"]' apps/prod/monitoring/grafana-admin.sops.yaml | base64 -d
+```
+
+🔄 **Rotate:** recreate the file and merge. Grafana writes the admin password into its database only on the first
+start, so also set it in the running instance:
+`kubectl -n monitoring exec -it deploy/kps-grafana -c grafana -- grafana cli admin reset-admin-password --password-from-stdin`
+and paste the new value.
+
+</details>
+
+### 🚨 Alertmanager Discord webhook
+
+<details>
+<summary><code>apps/prod/monitoring/alertmanager-discord.sops.yaml</code></summary>
+
+| | |
+|---|---|
+| Secret | `alertmanager-discord` in `monitoring`, key `url`. Mounted at `/etc/alertmanager/secrets/alertmanager-discord/url` (`alertmanagerSpec.secrets`) |
+| Used by | Alertmanager's `discord` receiver (`webhook_url_file`) |
+| Source | Discord: the `#homelab-alerts` channel → Edit Channel → Integrations → Webhooks → New Webhook → Copy Webhook URL |
+| Created | 28 Oct 2026 (M5 PR 6) |
+
+```bash
+scripts/sops-secret.sh apps/prod/monitoring/alertmanager-discord.sops.yaml alertmanager-discord monitoring \
+  url=ask      # paste the webhook URL
+```
+
+🔄 **Rotate:**
+1. Delete the webhook in Discord. That revokes it at once.
+2. Make a new one, recreate the file as above, and merge.
+3. After the merge, restart Alertmanager so it reads the new file:
+   `kubectl -n monitoring rollout restart statefulset/alertmanager-kps-alertmanager`.
 
 </details>

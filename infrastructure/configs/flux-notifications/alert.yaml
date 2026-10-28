@@ -32,6 +32,9 @@ spec:
     - kind: HelmRelease
       name: "*"
       namespace: authentik
+    - kind: HelmRelease
+      name: "*"
+      namespace: monitoring
   # Routine, not news: dependsOn waits during a rollout.
   exclusionList:
     - "^Dependencies do not meet ready condition"

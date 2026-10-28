@@ -25,7 +25,7 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | Dropped | In-cluster Uptime Kuma. It can't report the one failure that matters at a remote site, the site going quiet. The external Uptime Kuma at home stays the backlog priority |
 | Alerts | Alertmanager's native Discord receiver, to a new `#homelab-alerts` channel. Separate from `#homelab-deploys`, so alerts don't get lost in deploy noise |
 | Images | Multi-arch (amd64 + arm64) on GHCR, built by GitHub Actions with buildx. The gth-ui playground is the first pipeline; BottleBot and GreenTechHub reuse it in M6. Packages are public, so no pull secret |
-| Playground | LAN only, `playground.home.green-tech-hub.com`. No tunnel rule: it has a fake persona switcher (admin included), and any visitor can change demo state that every visitor sees. `playground.green-tech-hub.com` comes later, and only behind Authentik (every user signed in, access by role or group), after PR 5. The migration plan's backlog holds the pre-exposure checks it must pass first |
+| Playground | LAN only, `playground.home.green-tech-hub.com`. No tunnel rule: it has a fake persona switcher (admin included), and any visitor can change demo state that every visitor sees. `playground.green-tech-hub.com` comes later, and only behind Authentik (every user signed in, invite-only). That's scheduled as M5.5 in the migration plan, after this milestone's exit, with the pre-exposure checks first |
 | Data node | rpi-03 stays the data node: the only node with real storage (NVMe). The other Pis boot from SD, and laptop-01 keeps its control-plane taint. Every stateful PV lives under `/mnt/nvme/k8s/<name>` on rpi-03 |
 | Data-node taint | **None.** The `local-nvme` PVs' node affinity already pins stateful pods to rpi-03. A taint would only push other pods off the strongest worker (Pi 5, 8 GB), which also runs cloudflared and is one of the two Envoy nodes, and leave general pods on rpi-01 (2 GB) and rpi-02. Revisit when pc-01 or another big worker joins, or if rpi-03 shows contention |
 | Protecting Postgres | Memory requests equal limits (Guaranteed QoS), and a `homelab-critical` PriorityClass for Postgres and Authentik, so other pods are evicted first under memory pressure |
@@ -44,8 +44,8 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | 2 | homelab-cluster | **gth-playground**: namespace, Deployment, Service, `HTTPRoute` on `playground.home`, as in [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). Image pinned by version and digest (`0.20.0@sha256:…`; Renovate automerges releases) | 1; GHCR package made public (done) | [#23](https://github.com/GreenMachine582/homelab-cluster/pull/23) |
 | 3 | HomeLab | **Local volume directories**: `k8s_local_volumes` on rpi-03 creates `/mnt/nvme/k8s/<name>` with owner and mode (`postgres`, `postgres-dumps`, `prometheus`, `grafana`). Updates the `k8s_data_taint_enabled` comment | — | [HomeLab #42](https://github.com/GreenMachine582/HomeLab/pull/42) |
 | 4 | both | **Postgres**: StatefulSet, PV and PVC, Service, superuser secret, per-app database Job, `pg_dump` CronJob, `homelab-critical` PriorityClass. HomeLab: `pg_dump_fetch.yml` copies dumps home. Restore rehearsal documented | 3 | [#36](https://github.com/GreenMachine582/homelab-cluster/pull/36) + [HomeLab #44](https://github.com/GreenMachine582/HomeLab/pull/44) |
-| 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | [#38](https://github.com/GreenMachine582/homelab-cluster/pull/38); blueprints [#40](https://github.com/GreenMachine582/homelab-cluster/pull/40); auto-apply + per-app access groups in the next PR |
-| 6 | homelab-cluster | **Monitoring + Grafana**: slimmed `kube-prometheus-stack`, Prometheus and Grafana PVs, Alertmanager → `#homelab-alerts`, Grafana on `grafana.home` with Authentik OIDC | 3, 5; `#homelab-alerts` webhook. The Grafana application comes from a blueprint | To do |
+| 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | [#38](https://github.com/GreenMachine582/homelab-cluster/pull/38); blueprints [#40](https://github.com/GreenMachine582/homelab-cluster/pull/40), [#41](https://github.com/GreenMachine582/homelab-cluster/pull/41), [#42](https://github.com/GreenMachine582/homelab-cluster/pull/42), [#43](https://github.com/GreenMachine582/homelab-cluster/pull/43) |
+| 6 | homelab-cluster | **Monitoring + Grafana**: slimmed `kube-prometheus-stack`, Prometheus and Grafana PVs, Alertmanager → `#homelab-alerts`, Grafana on `grafana.home` with Authentik OIDC | 3, 5; `#homelab-alerts` webhook. The Grafana application comes from a blueprint | In review |
 | 7 | both | **Exit + docs**: crash-loop and failed-Job alert tests (a temporary `test/` PR), dump restore, M5 marked done | 1–6 | To do |
 
 Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
@@ -80,10 +80,48 @@ Authentik's config lives in `apps/base/authentik/blueprints/`: MFA required, the
 which applies them. [AUTHENTIK.md](AUTHENTIK.md) has the files, how changes apply, the access model (a
 `<slug>-users` group per application, plus `homelab-admins`), and how to add an application.
 
+## Monitoring runbook
+
+`apps/base/monitoring/`: kube-prometheus-stack in `monitoring`. Prometheus (7 days, 9 GB cap) and Grafana keep their
+data on rpi-03 (`/mnt/nvme/k8s/prometheus`, `/mnt/nvme/k8s/grafana`). Alertmanager has no PV, so silences don't
+survive a restart.
+
+- **Grafana:** `https://grafana.home.green-tech-hub.com` → *Sign in with Authentik*. Who gets in is decided in
+  Authentik (`homelab-admins` or `grafana-users`, [AUTHENTIK.md › Access](AUTHENTIK.md#-access)). `homelab-admins`
+  are Grafana Admins; everyone else is a Viewer. The local `admin` is break-glass, for when Authentik is down
+  ([SECRETS.md › Grafana admin](SECRETS.md#-grafana-admin)).
+- **Check it:**
+  ```bash
+  flux get hr -n monitoring                         # kube-prometheus-stack Ready
+  kubectl -n monitoring get pod,pvc                 # all Running; both claims Bound
+  kubectl -n monitoring port-forward svc/kps-prometheus 9090   # http://localhost:9090/targets
+  ```
+  Every target should be up. etcd, the scheduler, the controller-manager and kube-proxy aren't scraped (see
+  Decisions).
+- **Alerts:** the chart's default rules, minus those for unscraped components, go to Discord `#homelab-alerts`,
+  grouped by alert and namespace and repeated every 12 h while firing. `Watchdog` (always firing) is dropped.
+- **Test the Discord path:**
+  ```bash
+  kubectl -n monitoring exec alertmanager-kps-alertmanager-0 -c alertmanager -- \
+    amtool alert add homelab_test severity=warning --annotation=summary="Test alert" \
+    --alertmanager.url=http://localhost:9093
+  ```
+  It posts within about 30 s, and posts *resolved* about 5 minutes later.
+- **Silence something:** Grafana → Alerting → Silences (Alertmanager datasource), or `amtool silence add` from the
+  same pod.
+
 ## What's needed from you
 
-1. **A Discord `#homelab-alerts` channel and webhook** (before PR 6). Stored as a SOPS secret, recorded in
-   [SECRETS.md](SECRETS.md).
+1. **A Discord `#homelab-alerts` channel and webhook**, then the PR 6 secrets. In WSL, from the OneDrive clone on the
+   PR's branch:
+   ```bash
+   scripts/sops-secret.sh apps/prod/monitoring/alertmanager-discord.sops.yaml alertmanager-discord monitoring url=ask
+   scripts/sops-secret.sh apps/prod/monitoring/grafana-oidc.sops.yaml grafana-oidc monitoring \
+     GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=sops:apps/prod/authentik/authentik-grafana-oidc.sops.yaml:AUTHENTIK_GRAFANA_CLIENT_SECRET
+   scripts/sops-secret.sh apps/prod/monitoring/grafana-admin.sops.yaml grafana-admin monitoring \
+     admin-user=ask admin-password=gen:40      # type admin at the prompt
+   ```
+   Details in [SECRETS.md](SECRETS.md).
 2. ~~**Make the GHCR package public** after its first push (GitHub → Packages → `greentechhub-ui-playground` →
    Package settings → Change visibility).~~ Done: the image pulls without credentials.
 3. **Authentik first login** after PR 5:

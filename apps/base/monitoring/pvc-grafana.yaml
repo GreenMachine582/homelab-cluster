@@ -1,0 +1,15 @@
+---
+# Grafana's database (users, preferences, anything saved in the UI). The
+# default dashboards come from the chart, not from here.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-nvme
+  volumeName: grafana
+  resources:
+    requests:
+      storage: 5Gi
