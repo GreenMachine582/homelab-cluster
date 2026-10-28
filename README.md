@@ -17,15 +17,16 @@ by Ansible in [HomeLab](https://github.com/GreenMachine582/HomeLab). This repo t
 bootstrapped.
 
 > [!NOTE]
-> **Status: M4, Platform. Everything is live except the backup target.** The cluster runs on all four nodes,
-> with daily etcd snapshots and a tested restore. Flux runs everything from `main`, including Cilium. Live:
+> **✅ M4, Platform, is done (28 Oct 2026).** The cluster runs on all four nodes, with daily etcd snapshots and a
+> tested restore. Flux runs everything from `main`, including Cilium. Live:
 > - the Gateway with a production wildcard cert on `192.168.50.240`
 > - LB-IPAM and L2 announcements
 > - `local-nvme` storage
 > - the Cloudflare tunnel
 > - Discord deploy notifications
+> - the backup drive on rpi-02 (NFS), with daily copies of the etcd snapshots and Postgres dumps
 >
-> M4 closes once the backup target is in place. The drive is in hand and goes on rpi-02. See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md).
+> See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md).
 >
 > **✅ M5, the first workloads, is done.** The gth-ui playground (LAN only), shared Postgres 18 with daily dumps,
 > Authentik, and Grafana with alerts to Discord are live. The alert path and a dump restore are tested. Next is M5.5,
@@ -282,7 +283,7 @@ PR is merged.
 | M1        | Nodes on the LAN: switch moved, nodes bootstrapped by Ansible | ✅ Done |
 | M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | ✅ Done |
 | M3        | Flux bootstrap, SOPS, branch protection, Cilium adopted      | ✅ Done |
-| M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS ([plan](docs/M4_PLATFORM.md)) | 🚧 Backup target left |
+| M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS ([plan](docs/M4_PLATFORM.md)) | ✅ Done |
 | M5        | gth-ui playground, Postgres, Authentik, Grafana + minimal alerting ([plan](docs/M5_WORKLOADS.md)) | ✅ Done |
 | M5.5      | Public playground behind Authentik: network policies, public listener, invite-only sign-up, hardening | ⏳ Next |
 | M6        | BottleBot, GreenTechHub (multi-arch GHCR builds)             | ⏳ Pending |

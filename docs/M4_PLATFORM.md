@@ -4,9 +4,13 @@ The platform layer that M6 workloads land on: LoadBalancer IPs, a Gateway with T
 through Cloudflare, and a backup target. This is the working plan. Each item is one PR, and its status is updated
 here as it lands.
 
+> [!NOTE]
+> **✅ M4 is done (28 Oct 2026).** The last piece, the backup drive on rpi-02, passed its exit test with HomeLab
+> `ansible-playbook playbooks/backup_drive.yml --tags verify`.
+
 **Exit test:**
-- A test app is reachable by hostname on the LAN over HTTPS, and publicly through the tunnel.
-- An etcd snapshot lands on the backup target.
+- [x] A test app is reachable by hostname on the LAN over HTTPS, and publicly through the tunnel.
+- [x] An etcd snapshot lands on the backup target.
 
 ## Decisions
 
@@ -35,9 +39,9 @@ here as it lands.
 | 6 | homelab-cluster | **Gateway**: namespace, wildcard `Certificate`, `Gateway` with HTTPS + redirect, test app `whoami` with an `HTTPRoute`. Proved on `letsencrypt-staging`, then switched to `letsencrypt` | 2, 4, 5 | [#15](https://github.com/GreenMachine582/homelab-cluster/pull/15), [#16](https://github.com/GreenMachine582/homelab-cluster/pull/16) |
 | 7 | both | **LAN names**: the `*.home` A record in Cloudflare (manual, see [Cloudflare setup](#cloudflare-setup-manual)); HomeLab `cluster_status.yml` checks resolution and HTTPS from the controller | 6 (the IP) | [#17](https://github.com/GreenMachine582/homelab-cluster/pull/17), HomeLab [#9](https://github.com/GreenMachine582/HomeLab/pull/9), [#10](https://github.com/GreenMachine582/HomeLab/pull/10) |
 | 8 | both | **cloudflared**: Deployment, config with ingress rules, SOPS tunnel credentials; public `whoami.green-tech-hub.com`. HomeLab installs the pinned CLI on the controller | Tunnel created (`cloudflared tunnel create homelab`), DNS CNAME | HomeLab [#11](https://github.com/GreenMachine582/HomeLab/pull/11); [#18](https://github.com/GreenMachine582/homelab-cluster/pull/18), [#19](https://github.com/GreenMachine582/homelab-cluster/pull/19) (HTTP/2) |
-| 9 | both | **Backup target**: `roles/backup_drive` on rpi-02 (ext4 by UUID, NFSv4 export per writer), `etcd_backup` copies snapshots there; the `pg-dump-offnode` CronJob copies dumps over an NFS PV | Drive attached to rpi-02 | In review: [HomeLab #46](https://github.com/GreenMachine582/HomeLab/pull/46), [#50](https://github.com/GreenMachine582/homelab-cluster/pull/50) (merge after the drive is up) |
+| 9 | both | **Backup target**: `roles/backup_drive` on rpi-02 (ext4 by UUID, NFSv4 export per writer), `etcd_backup` copies snapshots there; the `pg-dump-offnode` CronJob copies dumps over an NFS PV | Drive attached to rpi-02 | HomeLab [#46](https://github.com/GreenMachine582/HomeLab/pull/46), [#47](https://github.com/GreenMachine582/HomeLab/pull/47), [#48](https://github.com/GreenMachine582/HomeLab/pull/48), [#49](https://github.com/GreenMachine582/HomeLab/pull/49); [#50](https://github.com/GreenMachine582/homelab-cluster/pull/50) (done 28 Oct 2026) |
 | — | homelab-cluster | **Block remote kustomize bases** (`--no-remote-bases=true`): external content only through pinned Flux sources | — | [#10](https://github.com/GreenMachine582/homelab-cluster/pull/10) |
-| 10 | both | **Docs + M4 exit**: runbook for adding a service behind the Gateway; M4 marked done | 1–9 | Runbook: [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). M4 exit waits for 9 |
+| 10 | both | **Docs + M4 exit**: runbook for adding a service behind the Gateway; M4 marked done | 1–9 | Runbook: [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). M4 marked done here (28 Oct 2026) |
 | — | homelab-cluster | **Deploy notifications**: Flux posts each pulled commit and applied change to Discord `#homelab-deploys` | Discord webhook | [#20](https://github.com/GreenMachine582/homelab-cluster/pull/20) |
 
 Order: 1, 2 and 3 can merge in any order. Then 4, and 5 once the token exists. Then 6 → 7 → 8. 9 is independent.
