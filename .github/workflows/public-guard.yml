@@ -1,0 +1,39 @@
+name: Public guard
+
+# Every hostname in the cloudflared tunnel must lead to a hardened namespace:
+# PSA restricted, a default-deny CiliumNetworkPolicy, no service account token,
+# and the standard container hardening and limits. Checks the rendered
+# manifests on every PR to main (M5.5). See scripts/public-guard.py and
+# docs/ADDING_A_SERVICE.md "Before going public".
+# Required status check on the main ruleset: public-guard.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  public-guard:
+    name: public-guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install PyYAML
+        run: pip install pyyaml==6.0.3
+
+      # kubectl ships on the runner image; kustomize is built into it.
+      - name: Render the manifests
+        run: |
+          kubectl kustomize apps/prod > "$RUNNER_TEMP/apps.yaml"
+          kubectl kustomize infrastructure/configs > "$RUNNER_TEMP/infra.yaml"
+
+      - name: Check every public hostname
+        run: python scripts/public-guard.py "$RUNNER_TEMP/apps.yaml" "$RUNNER_TEMP/infra.yaml"

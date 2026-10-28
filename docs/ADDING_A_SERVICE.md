@@ -1,8 +1,8 @@
 # 🧩 Adding a service
 
 How to put an app on the cluster behind the shared Gateway, on the LAN and optionally in public. The worked
-example is `whoami` (`apps/base/whoami`), live at `https://whoami.home.green-tech-hub.com` and
-`https://whoami.green-tech-hub.com`. Replace `<name>` with the service's name throughout.
+example is `whoami` (`apps/base/whoami`), live at `https://whoami.home.green-tech-hub.com`. It was public too until
+M5.5 took it off the tunnel; it comes back once it's hardened. Replace `<name>` with the service's name throughout.
 
 **Quick links:** [📁 Layout](#-1-layout) · [🏗️ Deployment](#️-2-deployment) · [🌐 Route](#-3-service-and-httproute) ·
 [🔐 Secrets](#-4-secrets) · [💾 Storage](#-5-storage) · [☁️ Public](#️-6-public-access-optional) ·
@@ -20,7 +20,8 @@ example is `whoami` (`apps/base/whoami`), live at `https://whoami.home.green-tec
 - [ ] `apps/base/<name>/` with namespace, deployment, service, httproute and kustomization
 - [ ] `apps/prod/<name>/` overlay, listed in `apps/prod/kustomization.yaml`
 - [ ] Secrets as `*.sops.yaml`, each with an entry in [SECRETS.md](SECRETS.md)
-- [ ] *(optional)* tunnel rule + `config-rev` bump + `tunnel route dns` + a Cloudflare setup row
+- [ ] *(optional)* public: [Before going public](#-before-going-public) done, then tunnel rule + `config-rev` bump +
+  `tunnel route dns` + a Cloudflare setup row
 - [ ] `kubectl kustomize apps/prod` renders, then PR → merge → check
 
 ---
@@ -169,6 +170,43 @@ The PVC asks for `storageClassName: local-nvme` by name.
 
 ## ☁️ 6. Public access (optional)
 
+Anything public is reachable by anyone, so it's hardened before it gets a tunnel rule.
+
+### 🛑 Before going public
+
+**Enforced by CI.** The `public-guard` check (`scripts/public-guard.py`) follows every tunnel hostname to its
+HTTPRoute, and to any backend in another namespace. It fails the PR unless each of those namespaces has:
+- [ ] the label `pod-security.kubernetes.io/enforce: restricted` on its Namespace
+- [ ] a default-deny `CiliumNetworkPolicy` (`endpointSelector: {}`, with ingress and egress rules), plus policies
+  allowing only the traffic the app needs
+- [ ] `automountServiceAccountToken: false` on every pod spec
+- [ ] the [hardening](#️-2-deployment) on every container: non-root, `RuntimeDefault` seccomp, no privilege
+  escalation, read-only root filesystem, ALL capabilities dropped
+- [ ] CPU and memory requests and a memory limit on every container
+
+Run it before pushing:
+```bash
+kubectl kustomize apps/prod > /tmp/apps.yaml && kubectl kustomize infrastructure/configs > /tmp/infra.yaml
+python3 scripts/public-guard.py /tmp/apps.yaml /tmp/infra.yaml
+```
+
+> [!WARNING]
+> CI only sees manifests in git. Workloads a HelmRelease renders only get a warning, so check them in the cluster:
+> `kubectl -n <name> get pods -o yaml | grep -E 'automount|runAsNonRoot|readOnlyRoot|allowPrivilege'`.
+
+**Checked by you, in the PR:**
+- [ ] **Login and admin UIs are behind Authentik.** Use the app's OIDC, or Authentik's proxy provider if it has none.
+  An app that lets visitors change shared state (like the playground's persona switcher) is never public without it.
+- [ ] **Security headers** on the public route: HSTS, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy`, `X-Frame-Options: DENY`.
+- [ ] **No unreviewed automerge.** The app's image and chart get no Renovate `automerge` rule, so every update to a
+  public app is reviewed.
+- [ ] **An explicit DNS record** for the host. Never a wildcard CNAME to the tunnel.
+- [ ] The Cloudflare [edge settings](M4_PLATFORM.md#cloudflare-edge-settings) are still in place.
+- [ ] You know how to cut it off: [INCIDENT.md › Kill switch](INCIDENT.md#️-kill-switch).
+
+### Publishing
+
 The tunnel sends `<name>.green-tech-hub.com` to the Gateway as `<name>.home.green-tech-hub.com`. The LAN route and
 certificate serve it, and nothing on the Gateway changes.
 
@@ -188,8 +226,9 @@ certificate serve it, and nothing on the Gateway changes.
    ```
 4. Add the record to the [Cloudflare setup](M4_PLATFORM.md#cloudflare-setup-manual) table.
 
-> [!WARNING]
-> Anything public is reachable by anyone. Put admin UIs behind Cloudflare Access, or keep them LAN-only.
+> [!NOTE]
+> Until M5.5 adds the public Gateway listener, public names are rewritten to their `.home` name, so the guard
+> follows `httpHostHeader` to the route. After that, each rule keeps its public Host and the route lists it.
 
 ---
 
@@ -242,5 +281,6 @@ certificate serve it, and nothing on the Gateway changes.
 | Public 502 | The tunnel reached Cloudflare but not the service. Check the rule's names, and that the backend pods run on an `l7-proxy=supported` node |
 | Public 530 / 1033 | No tunnel connector. Check `kubectl -n cloudflared get pods` and their logs |
 | Public 404 from Cloudflare | The tunnel has no rule for the hostname (check the rule order, and `config-rev` bumped) |
+| `public-guard` fails | Each error names the host, namespace and missing control. "No HTTPRoute serves" means the rule's `httpHostHeader` (or hostname) matches no route's `hostnames` |
 
 </details>
