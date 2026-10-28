@@ -6,7 +6,7 @@
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=cloudflare&logoColor=white)
 ![SOPS + age](https://img.shields.io/badge/secrets-SOPS%20%2B%20age-555555)
 ![Self-hosted](https://img.shields.io/badge/self--hosted-homelab-4A90D9)
-![Status](https://img.shields.io/badge/status-M4_Platform-yellow)
+![Status](https://img.shields.io/badge/status-M5_done%2C_M5.5_next-yellow)
 
 GitOps repository for the homelab Kubernetes cluster. Everything running inside the cluster is declared here and
 applied by [Flux](https://fluxcd.io). Nothing is deployed by hand: changes land through an approved PR to `main`,
@@ -25,12 +25,12 @@ bootstrapped.
 > - the Cloudflare tunnel
 > - Discord deploy notifications
 >
-> M4 closes once the backup target is in place. See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md).
+> M4 closes once the backup target is in place. The drive is in hand and goes on rpi-02. See [docs/M4_PLATFORM.md](docs/M4_PLATFORM.md).
 >
-> **M5, the first workloads, is in progress.** The gth-ui playground is live, LAN only, at
-> `https://playground.home.green-tech-hub.com`, and shared Postgres 18 runs on rpi-03 with daily dumps. Authentik and
-> Grafana are next. See
-> [docs/M5_WORKLOADS.md](docs/M5_WORKLOADS.md) and the [Roadmap](#️-roadmap).
+> **✅ M5, the first workloads, is done.** The gth-ui playground (LAN only), shared Postgres 18 with daily dumps,
+> Authentik, and Grafana with alerts to Discord are live. The alert path and a dump restore are tested. Next is M5.5,
+> the public playground behind Authentik. See [docs/M5_WORKLOADS.md](docs/M5_WORKLOADS.md) and the
+> [Roadmap](#️-roadmap).
 
 **Quick links:** [🏗️ Architecture](#️-architecture) · [🗂️ Repo structure](#️-repo-structure) ·
 [🧩 Platform](#-platform-stack) · [🌐 Network](#-network) · [🔐 Secrets](#-secrets) · [🔒 Security](#-security) ·
@@ -103,7 +103,6 @@ homelab-cluster/
     controllers/                # Helm releases
       cilium/                   # ✅ adopted from the Ansible install
       cert-manager/             # ✅
-                                # ⏳ kube-prometheus-stack (M5)
     configs/
       cert-manager/             # ✅ Let's Encrypt ClusterIssuers + Cloudflare token
       cilium/                   # ✅ LB-IPAM pool, L2 announcement policy
@@ -115,7 +114,7 @@ homelab-cluster/
 
   apps/
     base/<service>/             # one folder per service: ✅ whoami, gth-playground, postgres,
-                                #   authentik; ⏳ bottlebot, greentechhub (M6), jellyfin (M7)
+                                #   authentik, monitoring; ⏳ bottlebot, greentechhub (M6), jellyfin (M7)
     prod/<service>/             # overlays + SOPS secrets
 
   docs/                         # ADDING_A_SERVICE.md, AUTHENTIK.md, SECRETS.md, M4_PLATFORM.md, M5_WORKLOADS.md
@@ -142,7 +141,7 @@ homelab-cluster/
 | 🔒 | cert-manager | Let's Encrypt via Cloudflare DNS-01 | `cert-manager` | ✅ |
 | 🚪 | Gateway `homelab` | One LoadBalancer IP for all LAN services, wildcard TLS | `gateway` | ✅ |
 | 🚇 | cloudflared | Outbound tunnel for public routes | `cloudflared` | ✅ |
-| 📈 | kube-prometheus-stack | Prometheus, Grafana, Alertmanager (slimmed, no control-plane scraping) | `monitoring` | ⏳ M5 |
+| 📈 | kube-prometheus-stack | Prometheus, Grafana, Alertmanager (slimmed, no control-plane scraping) | `monitoring` | ✅ |
 | 📜 | Loki + Alloy | Log storage and collection | `monitoring` | 📋 Backlog |
 
 ---
@@ -215,7 +214,7 @@ Cluster config is rebuildable from this repo. What git can't restore is data and
 |---------------------|---------------------------------|--------------------------------------|-----------|
 | Cluster config      | Git                             | GitHub                               | On merge  |
 | etcd + PKI          | `etcdctl snapshot save`, keep 7 | laptop-01 ✅, fetched home ✅, backup Pi ⏳ (M4) | Daily |
-| PostgreSQL          | `pg_dump` CronJob               | rpi-03 + fetched home ⏳ (M5), backup Pi ⏳ | Daily     |
+| PostgreSQL          | `pg_dump` CronJob               | rpi-03 + fetched home ✅, backup Pi ⏳ | Daily     |
 | age private key     | Manual offline copies           | Two locations, one off-site          | On change |
 
 Restores are tested, not assumed: the etcd restore in M2, a Postgres restore into a separate instance in M5, and a
@@ -227,7 +226,7 @@ full rebuild in M8.
 
 - 💬 **Live:** Discord `#homelab-deploys` gets every pulled commit, and every applied change or failure, from Flux.
   HomeLab sends node events (boot, power loss, SSH logins, etcd snapshot failures) to Discord.
-- 🚨 **M5:** kube-prometheus-stack's default alert rules go to Discord `#homelab-alerts` through Alertmanager, and
+- 🚨 **Live (M5):** kube-prometheus-stack's default alert rules go to Discord `#homelab-alerts` through Alertmanager, and
   Grafana is at `grafana.home` with Authentik sign-in ([runbook](docs/M5_WORKLOADS.md#monitoring-runbook)). Rules for
   the control-plane components aren't loaded, because they aren't scraped. What it catches:
 
@@ -284,7 +283,8 @@ PR is merged.
 | M2        | kubeadm + Cilium cluster, etcd snapshot restore tested       | ✅ Done |
 | M3        | Flux bootstrap, SOPS, branch protection, Cilium adopted      | ✅ Done |
 | M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS ([plan](docs/M4_PLATFORM.md)) | 🚧 Backup target left |
-| M5        | gth-ui playground, Postgres, Authentik, Grafana + minimal alerting ([plan](docs/M5_WORKLOADS.md)) | 🚧 In progress |
+| M5        | gth-ui playground, Postgres, Authentik, Grafana + minimal alerting ([plan](docs/M5_WORKLOADS.md)) | ✅ Done |
+| M5.5      | Public playground behind Authentik: network policies, public listener, invite-only sign-up, hardening | ⏳ Next |
 | M6        | BottleBot, GreenTechHub (multi-arch GHCR builds)             | ⏳ Pending |
 | M7        | Jellyfin and remaining services                              | ⏳ Pending |
 | M8        | Cutover from Compose, full DR rebuild test                   | ⏳ Pending |
