@@ -32,7 +32,8 @@ entries:
       slug: homelab-source-authentication
     attrs:
       name: Social login
-      title: Welcome to HomeLab!
+      # Only the MFA step after a social login; the brand lives in brand.yaml.
+      title: Confirm it's you
       designation: authentication
       authentication: require_unauthenticated
   - model: authentik_flows.flowstagebinding
