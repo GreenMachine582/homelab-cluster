@@ -5,7 +5,8 @@ Authentik (`https://auth.home.green-tech-hub.com`) is the cluster's single sign-
 in the UI, because the repo is public.
 
 **Quick links:** [📦 Blueprints](#-blueprints) · [🔄 How changes apply](#-how-changes-apply) ·
-[🚪 Access](#-access) · [🔗 Social login](#-social-login) · [➕ Adding an application](#-adding-an-application) · [🩺 Troubleshooting](#-troubleshooting)
+[🚪 Access](#-access) · [🔗 Social login](#-social-login) · [➕ Adding an application](#-adding-an-application) · [📣 Advisories](#-security-advisories) ·
+[🩺 Troubleshooting](#-troubleshooting)
 
 ---
 
@@ -230,6 +231,22 @@ entries:
 ```
 
 </details>
+
+## 📣 Security advisories
+
+Once `auth.green-tech-hub.com` is public (M5.5 PR 4), Authentik's login is on the internet, so its CVE fixes can't
+wait.
+
+- **Watch:** on GitHub, [`goauthentik/authentik`](https://github.com/goauthentik/authentik) → Watch → Custom →
+  **Security alerts**. Advisories also appear on the release notes.
+- **Patch within days:** Renovate opens the chart bump once a release is 3 days old. For a security release,
+  don't wait: approve or merge it the same day, or bump `version` in `apps/base/authentik/helmrelease.yaml` by
+  hand. Read the release notes first; a minor (2026.x) can need a migration.
+- **Review, not automerge:** today the chart's patch updates automerge like everything else. M5.5 PR 4 gives
+  Authentik (and PR 6 the playground) a Renovate rule with `automerge: false`, so every update to a public app is
+  reviewed ([ADDING_A_SERVICE.md › Before going public](ADDING_A_SERVICE.md#-before-going-public)).
+- **If a fix isn't out yet:** cut public access with the [kill switch](INCIDENT.md#️-kill-switch). `auth.home` keeps
+  working on the LAN.
 
 ## 🩺 Troubleshooting
 

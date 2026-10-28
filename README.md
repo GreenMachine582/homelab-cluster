@@ -193,7 +193,8 @@ sops apps/prod/my-app/my-app.sops.yaml
 ## 🔒 Security
 
 1. 🔀 **Change control:** `main` is protected. Every change needs a PR with signed commits that pass the
-   `commit-style` check, with no direct pushes, force-pushes or bypass. See [CONTRIBUTING.md](CONTRIBUTING.md).
+   `commit-style` and `public-guard` checks, with no direct pushes, force-pushes or bypass. See
+   [CONTRIBUTING.md](CONTRIBUTING.md).
 2. ⬇️ **Pull-based deploys:** nothing outside the cluster pushes into it. Flux pulls from GitHub.
 3. 🚫 **No inbound ports:** public traffic arrives only through the Cloudflare tunnel.
 4. 🔐 **Secrets:** SOPS-encrypted at rest in git, and Kubernetes Secrets are encrypted at rest in etcd.
@@ -201,9 +202,15 @@ sops apps/prod/my-app/my-app.sops.yaml
    kustomize bases are blocked.
 6. 🗓️ **Scheduling:** the control plane keeps its `NoSchedule` taint. The data node has no taint: its local PVs pin stateful pods there, and Postgres is protected by Guaranteed QoS
    and a `homelab-critical` PriorityClass ([M5](docs/M5_WORKLOADS.md#decisions)).
-7. ⏳ **Backlog:** Cilium network policies, default-deny per namespace. There are none yet, so any pod can reach any
-   other. The only public route is `whoami`. A service gets a tunnel rule only after the pre-exposure checks (backlog),
-   and anything with admin or shared-write features only behind Authentik.
+7. 🛑 **Pre-exposure checks:** nothing is public right now. A tunnel hostname only merges if `public-guard` passes:
+   PSA `restricted`, default-deny network policy, no service account token, hardened containers
+   ([Before going public](docs/ADDING_A_SERVICE.md#-before-going-public)). Anything with admin or shared-write
+   features goes public only behind Authentik.
+8. 🚨 **Incidents:** kill switch, revoking sessions and rotation in [docs/INCIDENT.md](docs/INCIDENT.md).
+9. 📣 **Advisories:** the `goauthentik/authentik` repo is watched for security advisories on GitHub. Once `auth` is
+   public, a CVE fix merges within days ([AUTHENTIK.md › Security advisories](docs/AUTHENTIK.md#-security-advisories)).
+10. ⏳ **In progress (M5.5):** Cilium network policies, default-deny per namespace. There are none yet, so any pod can
+    reach any other.
 
 ---
 
@@ -285,7 +292,7 @@ PR is merged.
 | M3        | Flux bootstrap, SOPS, branch protection, Cilium adopted      | ✅ Done |
 | M4        | Gateway, LB-IPAM, cert-manager, storage, cloudflared, backup NFS ([plan](docs/M4_PLATFORM.md)) | ✅ Done |
 | M5        | gth-ui playground, Postgres, Authentik, Grafana + minimal alerting ([plan](docs/M5_WORKLOADS.md)) | ✅ Done |
-| M5.5      | Public playground behind Authentik: network policies, public listener, invite-only sign-up, hardening | ⏳ Next |
+| M5.5      | Public playground behind Authentik: network policies, public listener, invite-only sign-up, hardening | 🚧 In progress |
 | M6        | BottleBot, GreenTechHub (multi-arch GHCR builds)             | ⏳ Pending |
 | M7        | Jellyfin and remaining services                              | ⏳ Pending |
 | M8        | Cutover from Compose, full DR rebuild test                   | ⏳ Pending |
@@ -294,8 +301,7 @@ PR is merged.
 <summary>📋 Backlog</summary>
 
 Pi-hole (split-horizon DNS), external Uptime Kuma (priority), Loki + Alloy, control-plane metrics, Camunda 8, n8n, control-plane HA, CloudNativePG, VLAN
-segmentation, Longhorn, network policies, pre-exposure checks (a checklist and a CI guard before any tunnel rule), GPU
-workloads.
+segmentation, Longhorn, network policies for the namespaces M5.5 doesn't cover, GPU workloads.
 
 </details>
 

@@ -9,8 +9,8 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 (BottleBot, GreenTechHub) and M7 (Jellyfin and the rest) follow, renumbered in the migration plan.
 
 > [!NOTE]
-> **✅ M5 is done (28 Oct 2026).** Every exit test passed. Next is M5.5, the public playground behind Authentik
-> (migration plan). M4 is done too, since its backup drive went live on 28 Oct.
+> **✅ M5 is done (28 Oct 2026).** Every exit test passed. M5.5, the public playground behind Authentik,
+> is in progress (migration plan): its pre-exposure checks took whoami off the tunnel, so nothing is public now. M4 is done too, since its backup drive went live on 28 Oct.
 
 **Exit test:**
 - [x] The playground is reachable at `https://playground.home.green-tech-hub.com`.
@@ -189,7 +189,7 @@ For when Authentik is down, or a Grafana OIDC change locks everyone out.
   Grafana and anything with a database, and public access too (cloudflared runs there).
 - **Public playground off:** the persona switcher lets anyone act as an admin of the demo. Keep it off the tunnel
   until it's behind Authentik. The cluster has no network policies yet, so an exposed pod could reach every other
-  pod.
+  pod. CI's `public-guard` now blocks a tunnel rule to any namespace without them.
 - **No control-plane metrics:** etcd, scheduler and controller-manager problems won't alert. HomeLab's etcd snapshot
   failures still go to Discord.
 - **Monitoring inside the cluster:** nothing alerts if the whole site goes quiet. That's the external Uptime Kuma's
