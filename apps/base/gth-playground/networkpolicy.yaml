@@ -1,0 +1,57 @@
+---
+# Default deny (M5.5): every pod in the namespace is selected, and the empty
+# rules allow nothing, so only the policies below let traffic through. This
+# is the shape scripts/public-guard.py checks for. Copy this file for a new
+# public service (docs/ADDING_A_SERVICE.md "Before going public").
+#
+# L3/L4 rules only: the Pi 4s run without the L7 proxy
+# (infrastructure/configs/cilium/node-config-no-l7-proxy.yaml), so DNS-aware
+# rules (toFQDNs, rules.dns) wouldn't work there.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: gth-playground
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+# Name lookups, to CoreDNS only.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: gth-playground
+spec:
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - { port: "53", protocol: UDP }
+            - { port: "53", protocol: TCP }
+---
+# From the Gateway only. Envoy's traffic to backends carries Cilium's reserved
+# ingress identity. host is the kubelet's readiness probe, which Cilium allows
+# anyway; it's listed so the policy reads complete. The app calls nothing
+# else, so there's no egress beyond DNS.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-gateway
+  namespace: gth-playground
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: gth-playground
+  ingress:
+    - fromEntities: [ingress, host]
+      toPorts:
+        - ports:
+            - { port: "8500", protocol: TCP }
