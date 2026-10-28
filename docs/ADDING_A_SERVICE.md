@@ -178,7 +178,8 @@ Anything public is reachable by anyone, so it's hardened before it gets a tunnel
 HTTPRoute, and to any backend in another namespace. It fails the PR unless each of those namespaces has:
 - [ ] the label `pod-security.kubernetes.io/enforce: restricted` on its Namespace
 - [ ] a default-deny `CiliumNetworkPolicy` (`endpointSelector: {}`, with ingress and egress rules), plus policies
-  allowing only the traffic the app needs
+  allowing only the traffic the app needs. Copy `apps/base/gth-playground/networkpolicy.yaml`: default deny, DNS,
+  and ingress from the Gateway only. Rules stay L3/L4, because the Pi 4s have no L7 proxy
 - [ ] `automountServiceAccountToken: false` on every pod spec
 - [ ] the [hardening](#️-2-deployment) on every container: non-root, `RuntimeDefault` seccomp, no privilege
   escalation, read-only root filesystem, ALL capabilities dropped
