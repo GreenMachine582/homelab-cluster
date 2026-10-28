@@ -62,8 +62,8 @@ bindings:
 - **Membership is managed in the UI:** Admin interface → Directory → Groups → the group → Users → Add existing user.
   Blueprints never set `users`, so they leave memberships alone.
 - **Roles inside an app**, such as Grafana Viewer, Editor or Admin, come from the `groups` claim in the ID token
-  (the `profile` scope). The app maps them in its own config. For example, Grafana's `role_attribute_path` (M5 PR 6)
-  maps `homelab-admins` to Admin and everyone else to Viewer.
+  (the `profile` scope). The app maps them in its own config. For example, Grafana's `role_attribute_path`
+  (`apps/base/monitoring/helmrelease.yaml`) maps `homelab-admins` to Admin and everyone else to Viewer.
 
 ## 🔗 Social login
 

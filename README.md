@@ -227,13 +227,16 @@ full rebuild in M8.
 
 - 💬 **Live:** Discord `#homelab-deploys` gets every pulled commit, and every applied change or failure, from Flux.
   HomeLab sends node events (boot, power loss, SSH logins, etcd snapshot failures) to Discord.
-- ⏳ **M5:** in-cluster alerting to Discord `#homelab-alerts`:
+- 🚨 **M5:** kube-prometheus-stack's default alert rules go to Discord `#homelab-alerts` through Alertmanager, and
+  Grafana is at `grafana.home` with Authentik sign-in ([runbook](docs/M5_WORKLOADS.md#monitoring-runbook)). Rules for
+  the control-plane components aren't loaded, because they aren't scraped. What it catches:
 
-| Severity | Condition                                          | Channel |
-|----------|----------------------------------------------------|---------|
-| Critical | Node not ready, crash loop, backup job failed      | Discord |
-| Warning  | CPU/memory > 80%, PVC > 80% full, cert expiry      | Discord |
-| Info     | Upgrade available                                  | Discord |
+| Condition                                                        | Example rules                                    |
+|------------------------------------------------------------------|--------------------------------------------------|
+| Pods crash-looping or not ready, Jobs failing (`pg_dump`)        | `KubePodCrashLooping`, `KubeJobFailed`           |
+| Nodes not ready, or short of memory or disk                      | `KubeNodeNotReady`, `NodeFilesystemSpaceFillingUp` |
+| PVCs filling up                                                  | `KubePersistentVolumeFillingUp`                  |
+| Prometheus or Alertmanager itself broken                         | `PrometheusRuleFailures`, `AlertmanagerFailedToSendAlerts` |
 
 > [!WARNING]
 > Known gap: monitoring runs inside the cluster, so nothing alerts if the whole site goes quiet. An external Uptime

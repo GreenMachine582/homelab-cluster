@@ -1,0 +1,53 @@
+---
+# Local volumes on rpi-03's NVMe, as in apps/base/postgres/pv.yaml. HomeLab's
+# k8s_local_volumes role creates the directories: prometheus 1000:2000,
+# grafana 472:472 (each image's user). The claimRefs pin each PV to its
+# claim, including after a rebuild. Retain: deleting a PV or PVC never
+# deletes the data.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prometheus
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-nvme
+  claimRef:
+    namespace: monitoring
+    # The operator's name for the StatefulSet's claim:
+    # prometheus-<Prometheus name>-db-prometheus-<Prometheus name>-0.
+    name: prometheus-kps-prometheus-db-prometheus-kps-prometheus-0
+  local:
+    path: /mnt/nvme/k8s/prometheus
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [rpi-03]
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: grafana
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-nvme
+  claimRef:
+    namespace: monitoring
+    name: grafana
+  local:
+    path: /mnt/nvme/k8s/grafana
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [rpi-03]

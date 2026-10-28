@@ -1,0 +1,171 @@
+---
+# Monitoring (M5 PR 6): a slimmed kube-prometheus-stack. Prometheus (7 days),
+# Alertmanager → Discord #homelab-alerts, kube-state-metrics, node-exporter,
+# and Grafana on grafana.home (httproute.yaml), which signs in through
+# Authentik. Only what Flux's deploy notifications can't cover: crash loops,
+# nodes not ready, full PVCs, failed Jobs (docs/M5_WORKLOADS.md).
+#
+# Secrets (docs/SECRETS.md): alertmanager-discord (the webhook URL),
+# grafana-oidc (Grafana's copy of Authentik's client secret) and
+# grafana-admin (the break-glass local admin).
+#
+# fullnameOverride keeps the generated names short; pv.yaml's claimRef
+# depends on the Prometheus one.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  releaseName: kube-prometheus-stack
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: "92.14.1"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+  # The chart ships its CRDs; CreateReplace keeps them in step with chart
+  # bumps (Helm itself never upgrades CRDs).
+  install:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  values:
+    fullnameOverride: kps
+
+    # kubeadm binds these to 127.0.0.1, and Cilium replaces kube-proxy, so
+    # they aren't scraped. Their alert rules follow these switches.
+    kubeEtcd:
+      enabled: false
+    kubeScheduler:
+      enabled: false
+    kubeControllerManager:
+      enabled: false
+    kubeProxy:
+      enabled: false
+
+    prometheusOperator:
+      affinity: &not-rpi-01
+        # Not on rpi-01 (2 GB; docs/M5_WORKLOADS.md › Placement).
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [rpi-01]
+      resources:
+        requests: { cpu: 20m, memory: 64Mi }
+        limits: { memory: 256Mi }
+
+    kube-state-metrics:
+      affinity: *not-rpi-01
+      resources:
+        requests: { cpu: 10m, memory: 64Mi }
+        limits: { memory: 256Mi }
+
+    # A DaemonSet on every node, laptop-01 included.
+    prometheus-node-exporter:
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { memory: 64Mi }
+
+    prometheus:
+      prometheusSpec:
+        retention: 7d
+        retentionSize: 9GB
+        # Pick up ServiceMonitors and rules from any namespace, not only this
+        # release's.
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+        probeSelectorNilUsesHelmValues: false
+        # The prometheus PV (pv.yaml) is on rpi-03, so the pod runs there. The
+        # chart's securityContext (1000:2000) owns /mnt/nvme/k8s/prometheus.
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-nvme
+              volumeName: prometheus
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests:
+                  storage: 10Gi
+        resources:
+          requests: { cpu: 200m, memory: 1Gi }
+          limits: { memory: 2Gi }
+
+    alertmanager:
+      alertmanagerSpec:
+        affinity: *not-rpi-01
+        # Mounted at /etc/alertmanager/secrets/alertmanager-discord/.
+        secrets:
+          - alertmanager-discord
+        # No PV: silences are lost on a restart.
+        resources:
+          requests: { cpu: 10m, memory: 32Mi }
+          limits: { memory: 128Mi }
+      config:
+        route:
+          receiver: discord
+          group_by: [alertname, namespace]
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 12h
+          routes:
+            # Watchdog always fires (it proves the pipeline works), and
+            # InfoInhibitor only feeds inhibition.
+            - receiver: "null"
+              matchers:
+                - alertname =~ "Watchdog|InfoInhibitor"
+        receivers:
+          - name: "null"
+          - name: discord
+            discord_configs:
+              - webhook_url_file: /etc/alertmanager/secrets/alertmanager-discord/url
+                send_resolved: true
+
+    grafana:
+      fullnameOverride: kps-grafana
+      admin:
+        existingSecret: grafana-admin
+      envFromSecret: grafana-oidc
+      # The grafana PV (pv.yaml), on rpi-03, which also runs Envoy for the
+      # Gateway. The directory is already 472:472, so no root chown init.
+      persistence:
+        enabled: true
+        existingClaim: grafana
+      initChownData:
+        enabled: false
+      deploymentStrategy:
+        type: Recreate
+      resources:
+        requests: { cpu: 50m, memory: 128Mi }
+        limits: { memory: 512Mi }
+      grafana.ini:
+        server:
+          root_url: https://grafana.home.green-tech-hub.com
+        # Authentik's grafana application (blueprints/grafana.yaml) decides
+        # who gets in; the groups claim decides the role. The client secret
+        # is GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET from grafana-oidc.
+        auth.generic_oauth:
+          enabled: true
+          name: Authentik
+          client_id: grafana
+          scopes: openid email profile
+          auth_url: https://auth.home.green-tech-hub.com/application/o/authorize/
+          token_url: https://auth.home.green-tech-hub.com/application/o/token/
+          api_url: https://auth.home.green-tech-hub.com/application/o/userinfo/
+          role_attribute_path: contains(groups[*], 'homelab-admins') && 'Admin' || 'Viewer'
+          allow_sign_up: true
+          use_pkce: true
+        auth:
+          signout_redirect_url: https://auth.home.green-tech-hub.com/application/o/grafana/end-session/
