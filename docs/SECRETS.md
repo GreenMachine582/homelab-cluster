@@ -360,7 +360,7 @@ scripts/sops-secret.sh apps/prod/monitoring/grafana-oidc.sops.yaml grafana-oidc 
 | | |
 |---|---|
 | Secret | `grafana-admin` in `monitoring`, keys `admin-user` and `admin-password` (`grafana.admin.existingSecret`) |
-| Used by | Grafana's local admin: the break-glass login when Authentik is down. Sign in with the username/password form below the Authentik button |
+| Used by | Grafana's local admin: the break-glass login when Authentik is down. Grafana skips its login page, so sign in at `https://grafana.home.green-tech-hub.com/login?disableAutoLogin=true` ([M5_WORKLOADS.md › Grafana break-glass login](M5_WORKLOADS.md#-grafana-break-glass-login)) |
 | Source | `admin-user` typed in (`admin`); `admin-password` generated, read it back with `sops -d` when needed |
 | Created | 28 Oct 2026 (M5 PR 6) |
 
