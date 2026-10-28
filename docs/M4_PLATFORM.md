@@ -20,7 +20,7 @@ here as it lands.
 | Gateway | Cilium Gateway API (v1.6.1 CRDs, standard channel, imported by commit, not vendored), one shared `Gateway` (`gateway/homelab`, pinned to `192.168.50.240`), HTTPS listener with the wildcard cert, HTTP → HTTPS redirect. Each service adds an `HTTPRoute` with parentRef `gateway/homelab`, sectionName `https` |
 | Storage | `local-nvme` StorageClass (no provisioner, `WaitForFirstConsumer`, `Retain`). PVs are created per workload in M6, on rpi-03's `/mnt/nvme/k8s/<name>` |
 | Public access | cloudflared Deployment (2 replicas, arm64), locally-managed tunnel: ingress rules in git, credentials as a SOPS secret. The tunnel forwards to the Gateway inside the cluster |
-| Backups | External drive on a Pi at the site, served over NFS. etcd snapshots copied there daily (still also fetched home) |
+| Backups | External drive on rpi-02 (TOSHIBA 1 TB USB HDD), NFSv4, one export per writer to that node's IP only (not the site LAN: the files hold every Secret and the CA keys). etcd snapshots and Postgres dumps copied there daily, 30 kept (still also fetched home) |
 | Cilium values | Flux owns them. HomeLab's install seed keeps only the core networking values. Gateway API and L2 announcements are Flux-only, so a rebuild comes up with a plain CNI and Flux finishes it |
 
 ## PRs
@@ -35,7 +35,7 @@ here as it lands.
 | 6 | homelab-cluster | **Gateway**: namespace, wildcard `Certificate`, `Gateway` with HTTPS + redirect, test app `whoami` with an `HTTPRoute`. Proved on `letsencrypt-staging`, then switched to `letsencrypt` | 2, 4, 5 | [#15](https://github.com/GreenMachine582/homelab-cluster/pull/15), [#16](https://github.com/GreenMachine582/homelab-cluster/pull/16) |
 | 7 | both | **LAN names**: the `*.home` A record in Cloudflare (manual, see [Cloudflare setup](#cloudflare-setup-manual)); HomeLab `cluster_status.yml` checks resolution and HTTPS from the controller | 6 (the IP) | [#17](https://github.com/GreenMachine582/homelab-cluster/pull/17), HomeLab [#9](https://github.com/GreenMachine582/HomeLab/pull/9), [#10](https://github.com/GreenMachine582/HomeLab/pull/10) |
 | 8 | both | **cloudflared**: Deployment, config with ingress rules, SOPS tunnel credentials; public `whoami.green-tech-hub.com`. HomeLab installs the pinned CLI on the controller | Tunnel created (`cloudflared tunnel create homelab`), DNS CNAME | HomeLab [#11](https://github.com/GreenMachine582/HomeLab/pull/11); [#18](https://github.com/GreenMachine582/homelab-cluster/pull/18), [#19](https://github.com/GreenMachine582/homelab-cluster/pull/19) (HTTP/2) |
-| 9 | HomeLab | **Backup target**: role for the external drive (mount by UUID, NFS export to the site LAN), `etcd_backup` copies snapshots there | Drive attached to a Pi | Waiting for hardware |
+| 9 | both | **Backup target**: `roles/backup_drive` on rpi-02 (ext4 by UUID, NFSv4 export per writer), `etcd_backup` copies snapshots there; the `pg-dump-offnode` CronJob copies dumps over an NFS PV | Drive attached to rpi-02 | In review: [HomeLab #46](https://github.com/GreenMachine582/HomeLab/pull/46), this repo's `feat/postgres-offnode-dumps` (merge after the drive is up) |
 | — | homelab-cluster | **Block remote kustomize bases** (`--no-remote-bases=true`): external content only through pinned Flux sources | — | [#10](https://github.com/GreenMachine582/homelab-cluster/pull/10) |
 | 10 | both | **Docs + M4 exit**: runbook for adding a service behind the Gateway; M4 marked done | 1–9 | Runbook: [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md). M4 exit waits for 9 |
 | — | homelab-cluster | **Deploy notifications**: Flux posts each pulled commit and applied change to Discord `#homelab-deploys` | Discord webhook | [#20](https://github.com/GreenMachine582/homelab-cluster/pull/20) |
@@ -55,7 +55,7 @@ Steps done by hand in Cloudflare are listed under [Cloudflare setup](#cloudflare
    `cloudflared tunnel route dns homelab whoami.green-tech-hub.com` in WSL. The credentials JSON is encrypted as
    in [SECRETS.md](SECRETS.md).
 4. **A Discord webhook** for `#homelab-deploys` (done, 21 Oct 2026). See [SECRETS.md](SECRETS.md).
-5. **A drive for backups**, attached to rpi-01 or rpi-02. Still to do; the M4 exit test needs it.
+5. **A drive for backups** (done, 28 Oct 2026): a TOSHIBA 1 TB USB HDD on rpi-02, old data copied off.
 
 ## Cloudflare setup (manual)
 

@@ -5,7 +5,9 @@ resources:
   - namespace.yaml
   - pv.yaml
   - pvc-dumps.yaml
+  - pv-dumps-offnode.yaml
   - service.yaml
   - statefulset.yaml
   - app-databases-job.yaml
   - pg-dump-cronjob.yaml
+  - pg-dump-offnode-cronjob.yaml

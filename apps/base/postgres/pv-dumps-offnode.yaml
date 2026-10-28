@@ -1,0 +1,35 @@
+---
+# The postgres export on the backup drive (HomeLab roles/backup_drive): an
+# NFS share on rpi-02, exported to rpi-03's IP only. homelab-backup resolves
+# through each node's /etc/hosts, and the kubelet mounts it on the node, so
+# only pods on rpi-03 can use it. pg-dump-offnode copies dumps here.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-dumps-offnode
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  claimRef:
+    namespace: postgres
+    name: postgres-dumps-offnode
+  mountOptions: [nfsvers=4.2, hard, noatime]
+  nfs:
+    server: homelab-backup
+    path: /mnt/backup/postgres
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-dumps-offnode
+  namespace: postgres
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: postgres-dumps-offnode
+  resources:
+    requests:
+      storage: 100Gi

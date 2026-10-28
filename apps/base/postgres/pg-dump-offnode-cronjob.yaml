@@ -1,0 +1,74 @@
+---
+# Copies the newest pg-dump output to the backup drive on rpi-02 (M4), and
+# keeps 30 there. Separate from pg-dump so a missing drive never stops the
+# dump itself; a failed copy leaves a failed Job, which KubeJobFailed
+# alerts on. HomeLab's pg_dump_fetch.yml still takes the off-site copy.
+# Test run: kubectl -n postgres create job --from=cronjob/pg-dump-offnode offnode-test
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pg-dump-offnode
+  namespace: postgres
+spec:
+  # pg-dump runs at 02:30.
+  schedule: "15 3 * * *"
+  timeZone: Australia/Sydney
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      # An unreachable drive leaves the pod waiting on the NFS mount, not
+      # failing; the deadline turns that into a failed Job (and an alert).
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            # Same image as pg-dump: nothing new to pull or pin.
+            - name: copy
+              image: postgres:18.6-trixie@sha256:edb0c08dc33befd0262ab3b5cf1c4f3f8cfd8b09e88c05b45adee29d6761ddb6
+              command: [bash, -euo, pipefail, -c]
+              # Copied under a temporary name, checked, then renamed, so a
+              # failed copy never looks like a complete one.
+              args:
+                - |
+                  src="$(ls -1t /dumps/pg_dumpall-*.sql.gz | head -n 1)"
+                  name="$(basename "$src")"
+                  if [ ! -e "/offnode/$name" ]; then
+                    cp "$src" "/offnode/$name.partial"
+                    gzip -t "/offnode/$name.partial"
+                    mv "/offnode/$name.partial" "/offnode/$name"
+                  fi
+                  ls -1t /offnode/pg_dumpall-*.sql.gz | tail -n +31 | xargs -r rm --
+                  rm -f /offnode/*.partial
+                  ls -lh /offnode
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests: { cpu: 20m, memory: 32Mi }
+                limits: { memory: 128Mi }
+              volumeMounts:
+                - name: dumps
+                  mountPath: /dumps
+                  readOnly: true
+                - name: offnode
+                  mountPath: /offnode
+          volumes:
+            - name: dumps
+              persistentVolumeClaim:
+                claimName: postgres-dumps
+            - name: offnode
+              persistentVolumeClaim:
+                claimName: postgres-dumps-offnode
