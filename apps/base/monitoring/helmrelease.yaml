@@ -167,5 +167,10 @@ spec:
           role_attribute_path: contains(groups[*], 'homelab-admins') && 'Admin' || 'Viewer'
           allow_sign_up: true
           use_pkce: true
+          # Straight to Authentik, no Grafana login page. Break-glass admin:
+          # /login?disableAutoLogin=true shows the username/password form.
+          auto_login: true
+        # Ends the Authentik session too, so auto_login doesn't sign the user
+        # straight back in.
         auth:
           signout_redirect_url: https://auth.home.green-tech-hub.com/application/o/grafana/end-session/

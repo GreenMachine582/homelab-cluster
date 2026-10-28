@@ -32,7 +32,7 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | Postgres | Official `postgres` image, StatefulSet with one replica, a `local-nvme` PV on rpi-03, ClusterIP Service. One database and role per app, created by a Job from SOPS secrets (the image's init scripts run only on first start). CloudNativePG stays in the backlog |
 | Postgres backups | Daily `pg_dumpall` CronJob, gzipped, keep 7, to a second PV on rpi-03. Fetched home by a HomeLab playbook, like etcd snapshots. Moves to the NFS backup target when [M4](M4_PLATFORM.md) PR 9 lands |
 | Authentik | Official `goauthentik` Helm chart, external Postgres, `auth.home.green-tech-hub.com`. Bootstrap admin password and secret key as SOPS secrets |
-| Grafana login | Authentik OIDC (`generic_oauth`). The local admin stays as break-glass |
+| Grafana login | Authentik OIDC (`generic_oauth`) with `auto_login`: no Grafana login page, opening Grafana goes straight to Authentik. The local admin stays as break-glass, behind `/login?disableAutoLogin=true` |
 | Placement | Nothing new on rpi-01 (2 GB). Postgres, Prometheus and Grafana sit on rpi-03 because of their PVs |
 
 ## PRs
@@ -45,7 +45,7 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | 3 | HomeLab | **Local volume directories**: `k8s_local_volumes` on rpi-03 creates `/mnt/nvme/k8s/<name>` with owner and mode (`postgres`, `postgres-dumps`, `prometheus`, `grafana`). Updates the `k8s_data_taint_enabled` comment | — | [HomeLab #42](https://github.com/GreenMachine582/HomeLab/pull/42) |
 | 4 | both | **Postgres**: StatefulSet, PV and PVC, Service, superuser secret, per-app database Job, `pg_dump` CronJob, `homelab-critical` PriorityClass. HomeLab: `pg_dump_fetch.yml` copies dumps home. Restore rehearsal documented | 3 | [#36](https://github.com/GreenMachine582/homelab-cluster/pull/36) + [HomeLab #44](https://github.com/GreenMachine582/HomeLab/pull/44) |
 | 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | [#38](https://github.com/GreenMachine582/homelab-cluster/pull/38); blueprints [#40](https://github.com/GreenMachine582/homelab-cluster/pull/40), [#41](https://github.com/GreenMachine582/homelab-cluster/pull/41), [#42](https://github.com/GreenMachine582/homelab-cluster/pull/42), [#43](https://github.com/GreenMachine582/homelab-cluster/pull/43) |
-| 6 | homelab-cluster | **Monitoring + Grafana**: slimmed `kube-prometheus-stack`, Prometheus and Grafana PVs, Alertmanager → `#homelab-alerts`, Grafana on `grafana.home` with Authentik OIDC | 3, 5; `#homelab-alerts` webhook. The Grafana application comes from a blueprint | In review |
+| 6 | homelab-cluster | **Monitoring + Grafana**: slimmed `kube-prometheus-stack`, Prometheus and Grafana PVs, Alertmanager → `#homelab-alerts`, Grafana on `grafana.home` with Authentik OIDC | 3, 5; `#homelab-alerts` webhook. The Grafana application comes from a blueprint | [#44](https://github.com/GreenMachine582/homelab-cluster/pull/44); login fixes [#46](https://github.com/GreenMachine582/homelab-cluster/pull/46), auto-login [#48](https://github.com/GreenMachine582/homelab-cluster/pull/48) |
 | 7 | both | **Exit + docs**: crash-loop and failed-Job alert tests (a temporary `test/` PR), dump restore, M5 marked done | 1–6 | To do |
 
 Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
@@ -86,10 +86,11 @@ which applies them. [AUTHENTIK.md](AUTHENTIK.md) has the files, how changes appl
 data on rpi-03 (`/mnt/nvme/k8s/prometheus`, `/mnt/nvme/k8s/grafana`). Alertmanager has no PV, so silences don't
 survive a restart.
 
-- **Grafana:** `https://grafana.home.green-tech-hub.com` → *Sign in with Authentik*. Who gets in is decided in
-  Authentik (`homelab-admins` or `grafana-users`, [AUTHENTIK.md › Access](AUTHENTIK.md#-access)). `homelab-admins`
-  are Grafana Admins; everyone else is a Viewer. The local `admin` is break-glass, for when Authentik is down
-  ([SECRETS.md › Grafana admin](SECRETS.md#-grafana-admin)).
+- **Grafana:** `https://grafana.home.green-tech-hub.com` goes straight to Authentik; there's no Grafana login page.
+  Who gets in is decided in Authentik (`homelab-admins` or `grafana-users`,
+  [AUTHENTIK.md › Access](AUTHENTIK.md#-access)). `homelab-admins` are Grafana Admins; everyone else is a Viewer.
+  Signing out of Grafana signs you out of Authentik too. The local `admin` is break-glass, for when Authentik is down
+  ([below](#-grafana-break-glass-login)).
 - **Check it:**
   ```bash
   flux get hr -n monitoring                         # kube-prometheus-stack Ready
@@ -109,6 +110,27 @@ survive a restart.
   It posts within about 30 s, and posts *resolved* about 5 minutes later.
 - **Silence something:** Grafana → Alerting → Silences (Alertmanager datasource), or `amtool silence add` from the
   same pod.
+
+### 🆘 Grafana break-glass login
+
+For when Authentik is down, or a Grafana OIDC change locks everyone out.
+
+<details>
+<summary><b>Sign in as the local <code>admin</code></b></summary>
+
+1. Open `https://grafana.home.green-tech-hub.com/login?disableAutoLogin=true`. It shows Grafana's own
+   username/password form instead of redirecting to Authentik.
+2. Username `admin`. The password:
+   ```bash
+   kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d; echo
+   ```
+   Or from git, with the private key: [SECRETS.md › Grafana admin](SECRETS.md#-grafana-admin).
+
+> [!TIP]
+> The bypass URL works while `auto_login` is on; there's nothing to turn off first. Bookmark it next to the
+> password.
+
+</details>
 
 ## What's needed from you
 

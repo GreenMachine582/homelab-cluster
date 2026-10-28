@@ -142,6 +142,11 @@ Put the IDs and secrets in `authentik-social-sources` ([SECRETS.md](SECRETS.md#-
    - client ID `<slug>`
    - the secret from step 3
    - scopes `openid email profile`
+   - **Skip the app's own login page** where it can (Grafana: `auto_login: true`), so opening the app goes straight
+     to Authentik. Keep a local break-glass login reachable for when Authentik is down (Grafana:
+     `/login?disableAutoLogin=true`).
+   - **Sign-out** redirects to `https://auth.home.green-tech-hub.com/application/o/<slug>/end-session/` (Grafana:
+     `auth.signout_redirect_url`). Without it, auto-login signs the user straight back in.
 5. **After merge:**
    - The blueprint shows successful.
    - Add people to `<slug>-users` in the UI.
@@ -259,6 +264,16 @@ The usual cause is that the OAuth2 provider has no grant types. Since 2026.x, a 
 empty, and the authorize endpoint rejects a grant type that isn't listed. Set
 `grant_types: [authorization_code, refresh_token]` in its blueprint, as the template does. Check it under Admin →
 Applications → Providers → the provider. Found on Grafana, 28 Oct 2026.
+
+</details>
+
+<details>
+<summary>🔁 <b>Signing out of an app logs straight back in</b></summary>
+
+The app skips its login page (auto-login) but its sign-out only ends its own session. The Authentik session is still
+live, so the next page load goes to Authentik and straight back in. Point the app's sign-out redirect at
+`https://auth.home.green-tech-hub.com/application/o/<slug>/end-session/`, as Grafana's `auth.signout_redirect_url`
+does in `apps/base/monitoring/helmrelease.yaml`.
 
 </details>
 
