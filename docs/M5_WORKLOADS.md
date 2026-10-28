@@ -8,11 +8,17 @@ M5 was re-scoped on 22 Oct 2026. It was full observability (kube-prometheus-stac
 Kuma); it now ships workloads first and keeps only the monitoring that the cluster can't do without. The old M6
 (BottleBot, GreenTechHub) and M7 (Jellyfin and the rest) follow, renumbered in the migration plan.
 
+> [!NOTE]
+> **✅ M5 is done (28 Oct 2026).** Every exit test passed. Next is M5.5, the public playground behind Authentik
+> (migration plan). M4 still waits on its backup target; the drive is in hand and goes on rpi-02.
+
 **Exit test:**
-- The playground is reachable at `https://playground.home.green-tech-hub.com`.
-- Authentik login works through the Gateway, and Grafana's login goes through Authentik.
-- A crash-looping pod and a failed `pg_dump` Job each raise an alert in Discord `#homelab-alerts`.
-- A dump restores into a throwaway Postgres.
+- [x] The playground is reachable at `https://playground.home.green-tech-hub.com`.
+- [x] Authentik login works through the Gateway, and Grafana's login goes through Authentik (28 Oct, after
+  [#46](https://github.com/GreenMachine582/homelab-cluster/pull/46)).
+- [x] A crash-looping pod and a failed `pg_dump` Job each raise an alert in Discord `#homelab-alerts` (28 Oct,
+  HomeLab `alert_test.yml`: KubePodCrashLooping, KubeJobFailed, and KubePodNotReady with them).
+- [x] A dump restores into a throwaway Postgres (28 Oct, HomeLab `pg_restore_test.yml`, from the copy fetched home).
 
 ## Decisions
 
@@ -46,7 +52,7 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | 4 | both | **Postgres**: StatefulSet, PV and PVC, Service, superuser secret, per-app database Job, `pg_dump` CronJob, `homelab-critical` PriorityClass. HomeLab: `pg_dump_fetch.yml` copies dumps home. Restore rehearsal documented | 3 | [#36](https://github.com/GreenMachine582/homelab-cluster/pull/36) + [HomeLab #44](https://github.com/GreenMachine582/HomeLab/pull/44) |
 | 5 | homelab-cluster | **Authentik**: HelmRepository + HelmRelease on external Postgres, `HTTPRoute` on `auth.home`, SOPS secrets; namespace added to the `homelab-deploys` alert | 4 | [#38](https://github.com/GreenMachine582/homelab-cluster/pull/38); blueprints [#40](https://github.com/GreenMachine582/homelab-cluster/pull/40), [#41](https://github.com/GreenMachine582/homelab-cluster/pull/41), [#42](https://github.com/GreenMachine582/homelab-cluster/pull/42), [#43](https://github.com/GreenMachine582/homelab-cluster/pull/43) |
 | 6 | homelab-cluster | **Monitoring + Grafana**: slimmed `kube-prometheus-stack`, Prometheus and Grafana PVs, Alertmanager → `#homelab-alerts`, Grafana on `grafana.home` with Authentik OIDC | 3, 5; `#homelab-alerts` webhook. The Grafana application comes from a blueprint | [#44](https://github.com/GreenMachine582/homelab-cluster/pull/44); login fixes [#46](https://github.com/GreenMachine582/homelab-cluster/pull/46), auto-login [#48](https://github.com/GreenMachine582/homelab-cluster/pull/48) |
-| 7 | both | **Exit + docs**: crash-loop and failed-Job alert tests (a temporary `test/` PR), dump restore, M5 marked done | 1–6 | To do |
+| 7 | both | **Exit + docs**: crash-loop and failed-Job alert tests and a dump restore, as repeatable HomeLab playbooks (`alert_test.yml`, `pg_restore_test.yml`); M5 marked done | 1–6 | [HomeLab #45](https://github.com/GreenMachine582/HomeLab/pull/45) + [#49](https://github.com/GreenMachine582/homelab-cluster/pull/49) |
 
 Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
 
@@ -68,8 +74,9 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
 - **PV recovery:** the PVs are `Retain` and each has a `claimRef`. After a cluster rebuild, or if a PVC was deleted,
   the data is still on rpi-03. Delete the old PV object if it's `Released` (`kubectl delete pv postgres-data`), and
   Flux recreates it from git, already bound to its claim. Never delete `/mnt/nvme/k8s/postgres` itself.
-- **Restore** (rehearsed in PR 7): load a fetched dump into a throwaway `postgres:18` and check the app databases:
-  `zcat pg_dumpall-*.sql.gz | psql -U postgres`.
+- **Restore rehearsal:** HomeLab `ansible-playbook playbooks/pg_restore_test.yml` (after `pg_dump_fetch.yml`) loads
+  the newest fetched dump into a throwaway pod and checks the databases match the live ones. Run it after Postgres
+  upgrades. By hand, a real restore is `zcat pg_dumpall-*.sql.gz | psql -U postgres` into an empty instance.
 - **Major upgrades** (19+): Renovate's cap keeps them out. Dump, restore into a new major on a fresh PV, and switch
   over in a PR.
 
@@ -108,6 +115,15 @@ survive a restart.
     --alertmanager.url=http://localhost:9093
   ```
   It posts within about 30 s, and posts *resolved* about 5 minutes later.
+- **Test real alerts:** HomeLab `ansible-playbook playbooks/alert_test.yml` breaks a pod and a `pg_dump` Job on
+  purpose and waits for KubePodCrashLooping and KubeJobFailed (about 20 minutes). Run it after kube-prometheus-stack
+  or Alertmanager changes.
+- **A failed Job keeps alerting** (every 12 h) until it's deleted: `kubectl -n <ns> delete job <name>`.
+
+> [!NOTE]
+> **Info alerts post only alongside a warning.** The chart's `InfoInhibitor` rule holds back *info* alerts, such as
+> CPUThrottlingHigh, unless a warning fires in the same namespace. So an info alert you've never seen may show up
+> next to an unrelated warning. The alert test surfaced Postgres CPU throttling this way.
 - **Silence something:** Grafana → Alerting → Silences (Alertmanager datasource), or `amtool silence add` from the
   same pod.
 
@@ -160,6 +176,8 @@ For when Authentik is down, or a Grafana OIDC change locks everyone out.
 
 - **Dumps on the same node:** until the backup drive exists, `pg_dump` writes to rpi-03, next to the database. The
   copy fetched home is the only off-node copy. Point the CronJob at NFS as soon as M4 PR 9 lands.
+- **Fetching dumps needs the site route:** `pg_dump_fetch.yml` timed out waiting for sudo on rpi-03 until the
+  laptop-01 subnet route was approved in Tailscale. Approve it before fetching.
 - **rpi-03 holds all state:** Postgres, its dumps, Prometheus and Grafana. If rpi-03 is down, so are Authentik,
   Grafana and anything with a database, and public access too (cloudflared runs there).
 - **Public playground off:** the persona switcher lets anyone act as an admin of the demo. Keep it off the tunnel
