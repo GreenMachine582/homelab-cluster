@@ -1,19 +1,34 @@
 # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
-# The default brand (GreenTechHub title, logo and favicon), and the embedded
+# The branding, from the variables in context: below: the default brand's
+# title, logo and favicon, and the login page's title. Also the embedded
 # outpost's public URL. Login needs no base URL (Authentik uses the request's
 # host); authentik_host is what forward-auth and proxy providers redirect to.
 #
-# The images come from greentechhub-ui (static/logo), pinned to a commit so
-# they only change in a PR. logo-light.png has a dark outline, so it reads on
-# both of Authentik's themes.
+# Change the brand by editing context: only. The variables live in this file
+# on purpose: Authentik re-applies a blueprint only when its file changes, so
+# a value from the environment wouldn't take effect.
+#
+# The images come from greentechhub-ui, pinned to ui_commit so they change
+# only in a PR. logo-light.png has a dark outline, so it reads on both of
+# Authentik's themes.
 version: 1
 metadata:
   name: homelab - Brand and outpost host
+context:
+  brand_name: GreenTechHub
+  ui_commit: 1878f335119a94e4ea7cad070f1121bc8ce4e334
+  logo_path: src/greentechhub_ui/static/logo/logo-light.png
+  favicon_path: src/greentechhub_ui/static/logo/favicon.png
 entries:
   - model: authentik_blueprints.metaapplyblueprint
     attrs:
       identifiers:
         name: Default - Brand
+      required: false
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Authentication flow
       required: false
 
   - model: authentik_brands.brand
@@ -21,9 +36,22 @@ entries:
       domain: authentik-default
       default: true
     attrs:
-      branding_title: GreenTechHub
-      branding_logo: https://raw.githubusercontent.com/GreenMachine582/greentechhub-ui/1878f335119a94e4ea7cad070f1121bc8ce4e334/src/greentechhub_ui/static/logo/logo-light.png
-      branding_favicon: https://raw.githubusercontent.com/GreenMachine582/greentechhub-ui/1878f335119a94e4ea7cad070f1121bc8ce4e334/src/greentechhub_ui/static/logo/favicon.png
+      branding_title: !Context brand_name
+      branding_logo: !Format
+        - https://raw.githubusercontent.com/GreenMachine582/greentechhub-ui/%s/%s
+        - !Context ui_commit
+        - !Context logo_path
+      branding_favicon: !Format
+        - https://raw.githubusercontent.com/GreenMachine582/greentechhub-ui/%s/%s
+        - !Context ui_commit
+        - !Context favicon_path
+
+  # The login page's heading; the default is "Welcome to authentik!".
+  - model: authentik_flows.flow
+    identifiers:
+      slug: default-authentication-flow
+    attrs:
+      title: !Format ["Welcome to %s!", !Context brand_name]
 
   - model: authentik_outposts.outpost
     identifiers:

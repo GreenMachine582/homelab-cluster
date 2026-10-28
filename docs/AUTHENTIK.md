@@ -17,7 +17,7 @@ apply in doesn't matter.
 | File | Sets |
 |---|---|
 | `mfa.yaml` | Default login flow: users without an MFA device must enroll one (TOTP or WebAuthn) |
-| `brand.yaml` | Default brand: title `GreenTechHub`, with the logo and favicon from `greentechhub-ui` pinned to a commit (bump the SHA in a PR to change them); embedded outpost `authentik_host` = `https://auth.home…` |
+| `brand.yaml` | The branding, from the variables in its `context:` ([Changing the brand](#-changing-the-brand)): the default brand's title, logo and favicon, and the login page's title. Also the embedded outpost's `authentik_host` = `https://auth.home…` |
 | `admins.yaml` | Group `homelab-admins`: Authentik superusers, with access to every application |
 | `grafana.yaml` | OAuth2 provider + application `grafana` (client secret from `authentik-grafana-oidc`), group `grafana-users`, and its access bindings |
 | `sources.yaml` | GitHub, Google and Discord login sources (link-only, credentials from `authentik-social-sources`), the `homelab-source-authentication` flow (MFA, then login), and the buttons on the login page |
@@ -27,6 +27,22 @@ apply in doesn't matter.
   - `!Find` looks up an existing object.
   - `!KeyOf` refers to an entry's `id` in the same file.
   - `!Env` reads the worker's environment, which is how secrets reach a blueprint.
+  - `!Context` reads a variable from the file's `context:` block, and `!Format` builds a string from values
+    (`%s` placeholders).
+
+### 🎨 Changing the brand
+
+Edit the `context:` block at the top of `brand.yaml`, and nothing else:
+
+| Variable | Used for |
+|---|---|
+| `brand_name` | The brand title (browser tab) and the login page's "Welcome to …!" |
+| `ui_commit` | The `greentechhub-ui` commit the images come from. Bump it to pick up a new logo |
+| `logo_path`, `favicon_path` | The image paths inside that repo |
+
+The variables live in the blueprint file, not in the worker's environment, on purpose: Authentik re-applies a
+blueprint only when its file changes, so an environment value wouldn't take effect. After the merge the worker
+restarts and applies it. Check the login page in both light and dark mode.
 
 ## 🔄 How changes apply
 
