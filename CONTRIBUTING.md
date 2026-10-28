@@ -93,6 +93,17 @@ the old one.
 
 </details>
 
+<details>
+<summary><b>The <code>public-guard</code> check</b></summary>
+
+`.github/workflows/public-guard.yml` runs on every PR to `main` and is a required status check. It renders
+`apps/prod` and `infrastructure/configs` and follows each cloudflared tunnel hostname to the namespaces it reaches.
+It fails if any of them lacks PSA `restricted`, a default-deny CiliumNetworkPolicy, `automountServiceAccountToken:
+false`, or the container hardening and limits. Workloads a HelmRelease renders get a warning instead. The list and
+how to run it locally: [docs/ADDING_A_SERVICE.md › Before going public](docs/ADDING_A_SERVICE.md#-before-going-public).
+
+</details>
+
 ---
 
 ## ✅ Before opening a PR
