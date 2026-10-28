@@ -10,7 +10,7 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 
 > [!NOTE]
 > **✅ M5 is done (28 Oct 2026).** Every exit test passed. Next is M5.5, the public playground behind Authentik
-> (migration plan). M4 still waits on its backup target; the drive is in hand and goes on rpi-02.
+> (migration plan). M4 is done too, since its backup drive went live on 28 Oct.
 
 **Exit test:**
 - [x] The playground is reachable at `https://playground.home.green-tech-hub.com`.
@@ -36,7 +36,7 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 | Data-node taint | **None.** The `local-nvme` PVs' node affinity already pins stateful pods to rpi-03. A taint would only push other pods off the strongest worker (Pi 5, 8 GB), which also runs cloudflared and is one of the two Envoy nodes, and leave general pods on rpi-01 (2 GB) and rpi-02. Revisit when pc-01 or another big worker joins, or if rpi-03 shows contention |
 | Protecting Postgres | Memory requests equal limits (Guaranteed QoS), and a `homelab-critical` PriorityClass for Postgres and Authentik, so other pods are evicted first under memory pressure |
 | Postgres | Official `postgres` image, StatefulSet with one replica, a `local-nvme` PV on rpi-03, ClusterIP Service. One database and role per app, created by a Job from SOPS secrets (the image's init scripts run only on first start). CloudNativePG stays in the backlog |
-| Postgres backups | Daily `pg_dumpall` CronJob, gzipped, keep 7, to a second PV on rpi-03. Fetched home by a HomeLab playbook, like etcd snapshots. Moves to the NFS backup target when [M4](M4_PLATFORM.md) PR 9 lands |
+| Postgres backups | Daily `pg_dumpall` CronJob, gzipped, keep 7, to a second PV on rpi-03. Copied daily to the backup drive on rpi-02 by `pg-dump-offnode` (NFS, keep 30, [M4](M4_PLATFORM.md) PR 9), and fetched home by a HomeLab playbook, like etcd snapshots |
 | Authentik | Official `goauthentik` Helm chart, external Postgres, `auth.home.green-tech-hub.com`. Bootstrap admin password and secret key as SOPS secrets |
 | Grafana login | Authentik OIDC (`generic_oauth`) with `auto_login`: no Grafana login page, opening Grafana goes straight to Authentik. The local admin stays as break-glass, behind `/login?disableAutoLogin=true` |
 | Placement | Nothing new on rpi-01 (2 GB). Postgres, Prometheus and Grafana sit on rpi-03 because of their PVs |
@@ -73,7 +73,9 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
   `kubectl -n postgres logs job/dump-test` lists `/dumps`. HomeLab's `pg_dump_fetch.yml` copies the newest home.
 - **Copy to the backup drive:** `pg-dump-offnode` (03:15) copies the newest dump to the backup drive on rpi-02
   (`postgres-dumps-offnode`, NFS) and keeps 30 there. Test it with
-  `kubectl -n postgres create job --from=cronjob/pg-dump-offnode offnode-test`, then read `logs job/offnode-test`.
+  `kubectl -n postgres create job --from=cronjob/pg-dump-offnode offnode-test`, then
+  `kubectl -n postgres logs job/offnode-test` lists the drive's dumps. Clean up with
+  `kubectl -n postgres delete job offnode-test`.
   When the drive is down, the pod waits on the mount until the 30-minute deadline and the Job fails, so
   `KubeJobFailed` alerts. `pg-dump` itself still runs. Set up in HomeLab `docs/K8S_CLUSTER.md` › Backup drive.
 - **PV recovery:** the PVs are `Retain` and each has a `claimRef`. After a cluster rebuild, or if a PVC was deleted,
@@ -179,8 +181,8 @@ For when Authentik is down, or a Grafana OIDC change locks everyone out.
 
 ## Things to watch
 
-- **Dumps on the same node:** until the backup drive exists, `pg_dump` writes to rpi-03, next to the database. The
-  copy fetched home is the only off-node copy. Point the CronJob at NFS as soon as M4 PR 9 lands.
+- **Dumps off-site:** `pg-dump-offnode` copies each dump to the backup drive on rpi-02 (since 28 Oct), but that drive
+  is at the site too. The copy fetched home with `pg_dump_fetch.yml` is still the only off-site one, so keep fetching.
 - **Fetching dumps needs the site route:** `pg_dump_fetch.yml` timed out waiting for sudo on rpi-03 until the
   laptop-01 subnet route was approved in Tailscale. Approve it before fetching.
 - **rpi-03 holds all state:** Postgres, its dumps, Prometheus and Grafana. If rpi-03 is down, so are Authentik,
