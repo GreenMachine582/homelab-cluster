@@ -24,7 +24,7 @@ spec:
         app.kubernetes.io/name: cloudflared
       annotations:
         # Restart on a config change; kustomize doesn't hash this ConfigMap.
-        homelab/config-rev: "2"
+        homelab/config-rev: "3"
     spec:
       # It sends traffic to the Gateway, so it must run where Envoy runs
       # (CONTRIBUTING.md). Today that's only rpi-03 (laptop-01 is tainted).
