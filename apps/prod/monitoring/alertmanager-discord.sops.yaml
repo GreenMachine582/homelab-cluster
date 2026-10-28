@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+    url: ENC[AES256_GCM,data:dbpGqBRDDjYyGqvsxCEJuBaNCf6EJyW4lW4PgE9ugJGH7s1rRbmgcPjo16kbve5gwWbpF8WDCFi7tzvLwa/v697/AQq5c0oTn1Szkup6E4OtnxBKWWkcOPSFp0ncv2Gtf8AQ/1eEv+zLMe7I5LwB7x+IUKUBT+t4DUD4irw+vMmCYmc1oBWPAI5fb/bQNbmeXhczX5nu1iQa127sv3bEpiw04mI=,iv:bbxxzAG++PloK94Xk/c3YMhjmyYKZjoOES9lIsmofDc=,tag:5Y28r1+PvKzBUBccBnc/Lw==,type:str]
+kind: Secret
+metadata:
+    name: alertmanager-discord
+    namespace: monitoring
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBmeDllaVRjcmw3RGkzYzJK
+            b002ME5hSkRoQmd4NHVBaG1oTHNFY29ISkZBCjB3WjJKMm5nZlFrMTRwbVllR1Fs
+            WW94dWxuREdzUDVNZFFMbzBkRFdHZ2MKLS0tIG9GdTVwL0IwM2xUaUloR2ZkZHN3
+            MEhvaHBWQm9pZnhEM3ZtV2kyamd3TVkKN7biv6WJdNUmI9SfzMvyMewdcoatzomT
+            tIGofhBW//V+fQCMi0UPUHzhydZK/4CifwR7FfczYLJYTAO0y6Sq1Q==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age19k96we2u9cytex9zru4r0yaskqc88aryvh2mw5d7m2etjqschevqgyvrs5
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-10-28T00:16:16Z"
+    mac: ENC[AES256_GCM,data:XbhtIloCLsawvVxFer4QVvpmEWQuCL0lQ356MLY5f6tWJPFRrd6dg8tcXpHeT8Sv+TSDU0S3oQJV7fYIUGE+uk9y06W2F9VCwpwO3iYlbZ+pjfVy8qD5pW7sbkRjwYYOqXWdxBfT1GNBitVeNLAUV0tANTrRFboTLMsT7k2xtqA=,iv:VznAfDH4U3r26PhGvLJJHGvqsYWKWRZLzFB7TJAb4E0=,tag:Bt69uthZVcSS+3nJjDdGjQ==,type:str]
+    version: 3.13.3
