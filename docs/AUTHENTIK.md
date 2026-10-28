@@ -14,6 +14,12 @@ in the UI, because the repo is public.
 There's one file per concern. Each starts with a `metaapplyblueprint` for any default it changes, so the order they
 apply in doesn't matter.
 
+> [!IMPORTANT]
+> A `metaapplyblueprint` **re-applies the whole default blueprint** every time, and resets whatever that default
+> sets. *Default - Authentication flow* sets the login title to "Welcome to authentik!". So only `brand.yaml`
+> meta-applies it, then sets the title. Any other file that needs the default login flow meta-applies
+> `homelab - Brand and outpost host` instead (as `mfa.yaml` and `sources.yaml` do).
+
 | File | Sets |
 |---|---|
 | `mfa.yaml` | Default login flow: users without an MFA device must enroll one (TOTP or WebAuthn) |
@@ -43,6 +49,10 @@ Edit the `context:` block at the top of `brand.yaml`, and nothing else:
 The variables live in the blueprint file, not in the worker's environment, on purpose: Authentik re-applies a
 blueprint only when its file changes, so an environment value wouldn't take effect. After the merge the worker
 restarts and applies it. Check the login page in both light and dark mode.
+
+If the login page says "Welcome to authentik!" again, something re-applied the default login flow after
+`brand.yaml`, for example an Authentik upgrade that changed that default. Re-apply the brand: Admin →
+Customization → Blueprints → `homelab - Brand and outpost host` → Apply.
 
 ## 🔄 How changes apply
 
