@@ -59,8 +59,8 @@ spec:
             capabilities:
               drop: [ALL]
           resources:
-            requests: { cpu: 500m, memory: 1Gi }
-            limits: { cpu: 500m, memory: 1Gi }
+            requests: { cpu: "1", memory: 1Gi }
+            limits: { cpu: "1", memory: 1Gi }
           volumeMounts:
             # The 18 image keeps PGDATA at /var/lib/postgresql/18/docker.
             - name: data
