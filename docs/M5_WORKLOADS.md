@@ -59,10 +59,12 @@ Order: 1 and 3 can start in any order. 2 needs 1. Then 4 → 5 → 6 → 7.
 ## Postgres runbook
 
 `apps/base/postgres/`: Postgres 18 at `postgres.postgres.svc:5432`, data on `/mnt/nvme/k8s/postgres` (rpi-03).
+Only `authentik` and this namespace's own jobs can connect (`networkpolicy.yaml`, M5.5).
 
 - **Adding an app:** add a key named after the app (lowercase, digits, `_`) to `postgres-app-passwords`
   ([SECRETS.md](SECRETS.md#-postgres-app-passwords)), then bump `homelab/run` in `app-databases-job.yaml`. Flux
-  replaces the Job, which creates the role and database. Give the app its own copy of the password in its namespace.
+  replaces the Job, which creates the role and database. Give the app its own copy of the password in its namespace. Add its namespace to `allow-clients` in
+  `networkpolicy.yaml`, or its connections are dropped.
 - **Check it:**
   ```bash
   kubectl -n postgres get pod,pvc                        # postgres-0 Running, both claims Bound

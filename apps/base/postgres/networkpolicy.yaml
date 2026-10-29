@@ -1,0 +1,74 @@
+---
+# Default deny (M5.5), as in apps/base/gth-playground/networkpolicy.yaml:
+# only the policies below let traffic through. L3/L4 rules only.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: postgres
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+# Name lookups, to CoreDNS only (the jobs find postgres.postgres.svc).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: postgres
+spec:
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - { port: "53", protocol: UDP }
+            - { port: "53", protocol: TCP }
+---
+# Who may connect to Postgres: each app's namespace, plus this namespace's
+# own jobs (app-databases, pg-dump). Their pods have no common label, so the
+# namespace is the selector. Adding an app: add its namespace here
+# (docs/M5_WORKLOADS.md "Postgres runbook"). Probes are exec (pg_isready on
+# 127.0.0.1), so the host needs no rule. Postgres itself calls nothing.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-clients
+  namespace: postgres
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: authentik
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: postgres
+      toPorts:
+        - ports:
+            - { port: "5432", protocol: TCP }
+---
+# The jobs' side: from this namespace to Postgres. pg-dump-offnode only
+# copies files (its NFS volume is mounted by the kubelet, not the pod), so
+# it needs nothing else.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-jobs-to-postgres
+  namespace: postgres
+spec:
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: postgres
+      toPorts:
+        - ports:
+            - { port: "5432", protocol: TCP }
