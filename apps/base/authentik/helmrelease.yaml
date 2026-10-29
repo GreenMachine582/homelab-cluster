@@ -69,6 +69,12 @@ spec:
     # The chart doesn't test readOnlyRootFilesystem, so it stays off.
     server:
       replicas: 1
+      # No Kubernetes API token (M5.5): nothing here manages outposts
+      # through the API, so the "Local Kubernetes Cluster" integration shows
+      # unhealthy, which is expected. The chart renders the setting only
+      # with a service account name; authentik is the one it creates.
+      serviceAccountName: authentik
+      automountServiceAccountToken: false
       containerSecurityContext: &container
         allowPrivilegeEscalation: false
         capabilities:
@@ -81,6 +87,8 @@ spec:
         limits: { memory: 1Gi }
     worker:
       replicas: 1
+      serviceAccountName: authentik
+      automountServiceAccountToken: false
       # kustomize replaces this with authentik-blueprints-hash's hashed name
       # (kustomizeconfig.yaml), so a blueprint change restarts the worker.
       podAnnotations:
