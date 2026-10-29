@@ -6,7 +6,7 @@ in the UI, because the repo is public.
 
 **Quick links:** [📦 Blueprints](#-blueprints) · [🔄 How changes apply](#-how-changes-apply) ·
 [🚪 Access](#-access) · [🔗 Social login](#-social-login) · [➕ Adding an application](#-adding-an-application) · [🚨 Alerts](#-alerts) ·
-[📣 Advisories](#-security-advisories) ·
+[🌍 Public access](#-public-access) · [📣 Advisories](#-security-advisories) ·
 [🩺 Troubleshooting](#-troubleshooting)
 
 ---
@@ -25,7 +25,7 @@ apply in doesn't matter.
 | File | Sets |
 |---|---|
 | `mfa.yaml` | Default login flow: users without an MFA device must enroll one (TOTP or WebAuthn) |
-| `brand.yaml` | The branding, from the variables in its `context:` ([Changing the brand](#-changing-the-brand)): the default brand's title, logo and favicon, and the login page's title. Also the embedded outpost's `authentik_host` = `https://auth.home…` |
+| `brand.yaml` | The branding, from the variables in its `context:` ([Changing the brand](#-changing-the-brand)): the default brand's title, logo and favicon, and the login page's title. Also the embedded outpost's `authentik_host` = `https://auth.green-tech-hub.com` (the public name, [Public access](#-public-access)) |
 | `admins.yaml` | Group `homelab-admins`: Authentik superusers, with access to every application |
 | `grafana.yaml` | OAuth2 provider + application `grafana` (client secret from `authentik-grafana-oidc`), group `grafana-users`, and its access bindings |
 | `hardening.yaml` | No username enumeration (`pretend_user_exists`), no "remember me", 12-hour sessions, the `homelab-reputation` block on the login flow, and security events to Discord ([Alerts](#-alerts)) |
@@ -111,8 +111,10 @@ and connect each provider. From then on that button signs you in.
 <details>
 <summary>🛠️ <b>Creating the provider apps</b></summary>
 
-Every provider gets the callback `https://auth.home.green-tech-hub.com/source/oauth/callback/<slug>/`, where the slug is
-`github`, `google` or `discord`. The browser carries the redirect, so `auth.home` doesn't need to be public.
+Every provider gets the callback `https://auth.green-tech-hub.com/source/oauth/callback/<slug>/` (public, since M5.5
+PR 4b), where the slug is `github`, `google` or `discord`. Google and Discord also keep the `auth.home` callback, so the
+buttons work on both names. A GitHub OAuth app has only one callback host, so GitHub login works on the public name
+only.
 
 | Provider | Where | Notes |
 |---|---|---|
@@ -251,6 +253,23 @@ someone back in sooner: Admin → Customization → Reputation scores → delete
 
 **Test it** (LAN): sign in at `auth.home` with a wrong password 6 times. Each try posts a `login_failed`, and the next
 try is refused. Then delete the score. A rename in the UI (for example a group's attribute) posts a change event.
+
+## 🌍 Public access
+
+`https://auth.green-tech-hub.com` (M5.5 PR 4b) serves only what a user needs: signing in, social login, and their own
+settings (`apps/base/authentik/httproute-public.yaml`). The admin interface stays on `auth.home`, LAN only.
+
+| Public | Not public |
+|---|---|
+| `/` (redirects to the login flow), `/if/flow/`, `/if/user/`, `/flows/`, `/static/`, `/media/`, `/application/` (OIDC), `/source/` (social login callbacks), `/outpost.goauthentik.io/` (proxy providers), `/api/v3/`, `/ws/` | `/if/admin/` and every other path: the Gateway answers 404, and Cloudflare blocks `/if/admin*` before it gets there |
+
+- `/api/v3/` is open because the flow executor and the user interface call it. It checks the session's permissions,
+  so a non-admin can't use the admin endpoints. Admins sign in to the admin UI on `auth.home` only.
+- Cloudflare rate-limits `/api/v3/flows/executor/`, and the reputation policy ([Alerts](#-alerts)) blocks repeated
+  failed logins ([CLOUDFLARE.md › Rules](CLOUDFLARE.md#-rules)).
+- Grafana's OIDC stays on `auth.home`.
+- **A user page breaks on the public name:** open the browser's dev tools → Network, find the 404 on a path outside
+  the list, and add that prefix to the route in a PR.
 
 ## 📣 Security advisories
 

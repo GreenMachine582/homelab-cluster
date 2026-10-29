@@ -5,7 +5,7 @@ the zone's edge settings, and how the tunnel runs. Tunnel ingress rules themselv
 (`infrastructure/configs/cloudflared/configmap.yaml`); publishing a service is
 [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md) §6.
 
-**Quick links:** [📋 Setup](#-cloudflare-setup-manual) · [🔒 Edge settings](#-cloudflare-edge-settings) ·
+**Quick links:** [📋 Setup](#-cloudflare-setup-manual) · [🔒 Edge settings](#-cloudflare-edge-settings) · [🧱 Rules](#-rules) ·
 [🚇 Tunnel](#-tunnel)
 
 ---
@@ -21,6 +21,7 @@ Update this table whenever the dashboard changes.
 | LAN wildcard record | green-tech-hub.com → DNS → Records | Type `A`, name `*.home`, IPv4 `192.168.50.240` (the Gateway, `infrastructure/configs/gateway/gateway.yaml`), **DNS only** (grey cloud), TTL Auto | Every `*.home.green-tech-hub.com` service |
 | Apex record + tunnel route | DNS → Records; Zero Trust → Networks → Tunnels | Pre-existing, proxied apex `green-tech-hub.com` routed through a tunnel to `https://localhost:8080`. Not managed by this repo | Outside the cluster |
 | `homelab` tunnel | Zero Trust → Networks → Tunnels | Locally managed (the dashboard shows it but its ingress rules live in `infrastructure/configs/cloudflared/configmap.yaml`). ID `0906ae8b-a6d6-49d7-80f4-6bc4d724fcca`. Created in WSL with `cloudflared tunnel login` (writes `~/.cloudflared/cert.pem`, pick `green-tech-hub.com`) then `cloudflared tunnel create homelab`. Credentials: [SECRETS.md](SECRETS.md) | cloudflared |
+| Public `auth` record | DNS → Records | `CNAME` `auth` → `0906ae8b-a6d6-49d7-80f4-6bc4d724fcca.cfargotunnel.com`, **proxied**. Created with `cloudflared tunnel route dns homelab auth.green-tech-hub.com` (M5.5 PR 4b) | Public Authentik, user paths only |
 | Public `whoami` record | DNS → Records | The canary for the tunnel → Gateway path: M5.5 PR 3's test, kept (29 Oct 2026). `CNAME` `whoami` → `0906ae8b-a6d6-49d7-80f4-6bc4d724fcca.cfargotunnel.com`, proxied, from `cloudflared tunnel route dns homelab whoami.green-tech-hub.com` | Public whoami |
 
 Notes:
@@ -54,8 +55,22 @@ tick them here with the date once they're set.
 > pre-existing apex, reach their origin through cloudflared, which does its own TLS (`originServerName`), so they
 > shouldn't be affected. Check the apex still loads after switching anyway.
 
+## 🧱 Rules
+
+Security rules in the dashboard (M5.5 PR 4b). Free plan: up to 5 custom rules and one rate-limiting rule with a 10 s
+period.
+
+| Rule | Where | Expression | Action |
+|---|---|---|---|
+| Block the Authentik admin UI | Security → WAF → Custom rules | `(http.host eq "auth.green-tech-hub.com" and starts_with(http.request.uri.path, "/if/admin"))` | Block |
+| Rate-limit Authentik logins | Security → WAF → Rate limiting rules | `(http.host eq "auth.green-tech-hub.com" and starts_with(http.request.uri.path, "/api/v3/flows/executor/"))`, counted per IP, 10 requests per 10 s | Block for 10 s |
+
+Check them: `curl -s -o /dev/null -w '%{http_code}
+' https://auth.green-tech-hub.com/if/admin/` gives 403 (the WAF;
+404 from the Gateway without it).
+
 **Publishing or removing a service:** see [ADDING_A_SERVICE.md](ADDING_A_SERVICE.md) §6 and §8. Add every record
-created there to the table above.
+created there to the [Setup](#-cloudflare-setup-manual) table.
 
 ---
 

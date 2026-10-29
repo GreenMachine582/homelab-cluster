@@ -2,7 +2,9 @@
 # The branding, from the variables in context: below: the default brand's
 # title, logo and favicon, and the login page's title. Also the embedded
 # outpost's public URL. Login needs no base URL (Authentik uses the request's
-# host); authentik_host is what forward-auth and proxy providers redirect to.
+# host); authentik_host is what forward-auth and proxy providers redirect to,
+# so it's the public auth.green-tech-hub.com (M5.5 PR 4b): proxied apps are
+# public too, and auth.home doesn't resolve off the LAN.
 #
 # Change the brand by editing context: only. The variables live in this file
 # on purpose: Authentik re-applies a blueprint only when its file changes, so
@@ -58,5 +60,5 @@ entries:
       managed: goauthentik.io/outposts/embedded
     attrs:
       config:
-        authentik_host: https://auth.home.green-tech-hub.com
+        authentik_host: https://auth.green-tech-hub.com
         authentik_host_insecure: false
