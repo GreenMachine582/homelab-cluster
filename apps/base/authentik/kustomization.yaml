@@ -25,6 +25,7 @@ configMapGenerator:
       - blueprints/admins.yaml
       - blueprints/grafana.yaml
       - blueprints/sources.yaml
+      - blueprints/hardening.yaml
     options:
       disableNameSuffixHash: true
   - name: authentik-blueprints-hash

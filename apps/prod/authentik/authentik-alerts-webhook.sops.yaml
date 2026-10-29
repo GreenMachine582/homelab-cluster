@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+    AUTHENTIK_ALERTS_WEBHOOK: ENC[AES256_GCM,data:rTHGqvRMXdKOamnx1MEvLNvkvsxXYSTpiKlpA+i6gKJa545lWfCbLN8Yqwt2TpoVdXnAC+j8FHk4BsUgY92APy6xn2dhiDvnDghPHYBnyyXGndoPsfh3sU4aWZ2xJ4qOckkew6HSgXjnQ0hVZ478swqEr72buVm+bTcSW6hlW9I+utZTSoXu6fhQQmcrjOVmAq2b15fGxBl2ftuAuW8PmlB9SIE=,iv:yO3d8is9WUhG4YCwwObTQCTT592jQFl89zdcJ8CHKUM=,tag:8Ka6i16d2WM9AOzPRZm3qQ==,type:str]
+kind: Secret
+metadata:
+    name: authentik-alerts-webhook
+    namespace: authentik
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBsN3Rna2M4eWdrVFd4MmUw
+            SEVZYjlzMU0xa0pGYk1SNEx4Tm5hdk8vNHpBCmxKOENrbTdOZklCNmNPZjl1NlBx
+            dG9qa0N1VFRHNTcrSjN1VzRLTUtNTjgKLS0tIFRGcVZUQlZ6ZitBczdXUTZDR0NB
+            Q2NFSTM4VFFPVTV3b3ZZVUdwL2YwNVEKRU+IWRcidnn8Qwmeo9LwJVj+w40LeIMV
+            DNLz4UJEiajmM/Hbg5x08E1zn8ePTh+G1EBWIGEdlo4p551BUYvzIA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age19k96we2u9cytex9zru4r0yaskqc88aryvh2mw5d7m2etjqschevqgyvrs5
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-10-29T02:56:27Z"
+    mac: ENC[AES256_GCM,data:wHW9Q7sR/0IOAZ0UXZu6VCI4t3zAequfvJ/WTcBYL0NGANVxfOb/N4J5bB6PnmLMYBMywqBs6xEwdpqxP7vAbrQX9DYSZPBHJluumMUN1oJSJR1izkk8neA+SwF/GCGm1kZsNL5T92aC5+7BCmtZuXWV4cycn9dZu8iyAD4nLMk=,iv:6+s2tngIQ+C/WS26XWqDtTCQTFd3Q0zxU+x2iwQXZUY=,tag:FkaxD7O0PCoteyXz6r9mfA==,type:str]
+    version: 3.13.3

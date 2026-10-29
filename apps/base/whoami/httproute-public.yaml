@@ -1,6 +1,6 @@
 ---
-# https://whoami.green-tech-hub.com through the tunnel (M5.5 PR 3's test of
-# the public listener). Copy this for a public service: the https-public
+# https://whoami.green-tech-hub.com through the tunnel: M5.5 PR 3's test of
+# the public listener, kept as a canary. Copy this for a public service: the https-public
 # listener, the public hostname, and the security headers below
 # (docs/ADDING_A_SERVICE.md "Publishing").
 #

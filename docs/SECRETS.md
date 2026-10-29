@@ -88,6 +88,7 @@ For a file, use `--from-file=<key>=<path>` instead of `read` + `--from-literal`.
 | 📈 | [`grafana-oidc.sops.yaml`](#-grafana-oidc-client-secret) | `monitoring` / `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET` | Grafana's Authentik login (a copy of the one above) |
 | 📈 | [`grafana-admin.sops.yaml`](#-grafana-admin) | `monitoring` / `admin-user`, `admin-password` | Grafana's local admin (break-glass) |
 | 🚨 | [`alertmanager-discord.sops.yaml`](#-alertmanager-discord-webhook) | `monitoring` / `url` | Alertmanager → `#homelab-alerts` |
+| 🚨 | [`authentik-alerts-webhook.sops.yaml`](#-authentik-alerts-webhook) | `authentik` / `AUTHENTIK_ALERTS_WEBHOOK` | the `hardening` blueprint (events → `#homelab-alerts`) |
 | 🔗 | [`authentik-social-sources.sops.yaml`](#-authentik-social-login-sources) | `authentik` / `AUTHENTIK_{GITHUB,GOOGLE,DISCORD}_CLIENT_{ID,SECRET}` | the `sources` blueprint (GitHub, Google and Discord login) |
 
 ### ☁️ Cloudflare API token
@@ -328,6 +329,27 @@ scripts/sops-secret.sh apps/prod/authentik/authentik-social-sources.sops.yaml au
 🔄 **Rotate:** make a new secret in the provider's console, recreate this file with the same command (the other
 providers' current values passed as `ask`), merge, then run `kubectl -n authentik rollout restart deploy`. Delete the
 old secret in the console once a login works.
+
+</details>
+
+### 🚨 Authentik alerts webhook
+
+<details>
+<summary><code>apps/prod/authentik/authentik-alerts-webhook.sops.yaml</code></summary>
+
+| | |
+|---|---|
+| Secret | `authentik-alerts-webhook` in `authentik`, key `AUTHENTIK_ALERTS_WEBHOOK`, as env on the server and worker (`global.envFrom`) |
+| Used by | `apps/base/authentik/blueprints/hardening.yaml` (the `homelab-alerts-discord` transport, `!Env` + `/slack`) |
+| Source | a copy of [`alertmanager-discord`](#-alertmanager-discord-webhook): the `#homelab-alerts` webhook URL |
+| Created | 29 Oct 2026 (M5.5 PR 4a) |
+
+```bash
+scripts/sops-secret.sh apps/prod/authentik/authentik-alerts-webhook.sops.yaml authentik-alerts-webhook authentik   AUTHENTIK_ALERTS_WEBHOOK=sops:apps/prod/monitoring/alertmanager-discord.sops.yaml:url
+```
+
+🔄 **Rotate:** with the Alertmanager one: recreate this file from it, merge, then
+`kubectl -n authentik rollout restart deploy`. The worker re-applies the blueprints at start.
 
 </details>
 
