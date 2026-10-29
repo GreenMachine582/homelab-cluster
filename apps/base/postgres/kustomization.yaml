@@ -11,3 +11,4 @@ resources:
   - app-databases-job.yaml
   - pg-dump-cronjob.yaml
   - pg-dump-offnode-cronjob.yaml
+  - networkpolicy.yaml
