@@ -24,7 +24,7 @@ spec:
         app.kubernetes.io/name: cloudflared
       annotations:
         # Restart on a config change; kustomize doesn't hash this ConfigMap.
-        homelab/config-rev: "4"
+        homelab/config-rev: "5"
     spec:
       # It never calls the Kubernetes API.
       automountServiceAccountToken: false

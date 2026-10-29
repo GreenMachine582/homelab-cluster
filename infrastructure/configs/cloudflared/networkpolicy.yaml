@@ -72,8 +72,7 @@ spec:
 # public. Each new public host adds its backend's namespace and port here
 # (docs/ADDING_A_SERVICE.md "Publishing").
 #
-# whoami: M5.5 PR 3's test host, allowed ahead of its tunnel rule so the
-# Gateway path can be tested with it.
+# whoami: the canary host (M5.5 PR 3).
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -91,3 +90,11 @@ spec:
       toPorts:
         - ports:
             - { port: "8080", protocol: TCP }
+    # auth.green-tech-hub.com (M5.5 PR 4b). The whole namespace: the chart's
+    # pod labels aren't pinned here, and only the server listens on 9000.
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: authentik
+      toPorts:
+        - ports:
+            - { port: "9000", protocol: TCP }

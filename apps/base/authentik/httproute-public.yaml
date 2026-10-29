@@ -1,0 +1,47 @@
+---
+# https://auth.green-tech-hub.com through the tunnel (M5.5 PR 4b, decision
+# 43): only what a user needs to sign in and manage their own account. The
+# admin interface stays on auth.home (LAN): /if/admin/, /-/ and every other
+# path match no rule here, so the Gateway answers 404. Cloudflare also
+# blocks /if/admin* and rate-limits the flow executor (docs/CLOUDFLARE.md).
+#
+# /api/v3/ stays open: the flow executor and the user interface both call
+# it, and it checks the session's permissions itself. If a user page breaks,
+# look for a 404 on another path and add its prefix (docs/AUTHENTIK.md
+# "Public access"). Headers as in apps/base/whoami/httproute-public.yaml.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: authentik-public
+  namespace: authentik
+spec:
+  parentRefs:
+    - name: homelab
+      namespace: gateway
+      sectionName: https-public
+  hostnames:
+    - auth.green-tech-hub.com
+  rules:
+    - matches:
+        - path: { type: Exact, value: / }
+        - path: { type: PathPrefix, value: /if/flow/ }
+        - path: { type: PathPrefix, value: /if/user/ }
+        - path: { type: PathPrefix, value: /flows/ }
+        - path: { type: PathPrefix, value: /static/ }
+        - path: { type: PathPrefix, value: /media/ }
+        - path: { type: PathPrefix, value: /application/ }
+        - path: { type: PathPrefix, value: /source/ }
+        - path: { type: PathPrefix, value: /outpost.goauthentik.io/ }
+        - path: { type: PathPrefix, value: /api/v3/ }
+        - path: { type: PathPrefix, value: /ws/ }
+      filters:
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            set:
+              - { name: Strict-Transport-Security, value: max-age=15552000 }
+              - { name: X-Content-Type-Options, value: nosniff }
+              - { name: Referrer-Policy, value: strict-origin-when-cross-origin }
+              - { name: X-Frame-Options, value: DENY }
+      backendRefs:
+        - name: authentik-server
+          port: 80

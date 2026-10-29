@@ -34,4 +34,8 @@ data:
         service: https://cilium-gateway-homelab.gateway.svc.cluster.local:443
         originRequest:
           originServerName: whoami.green-tech-hub.com
+      - hostname: auth.green-tech-hub.com
+        service: https://cilium-gateway-homelab.gateway.svc.cluster.local:443
+        originRequest:
+          originServerName: auth.green-tech-hub.com
       - service: http_status:404
