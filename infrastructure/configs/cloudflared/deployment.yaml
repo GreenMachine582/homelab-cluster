@@ -26,6 +26,8 @@ spec:
         # Restart on a config change; kustomize doesn't hash this ConfigMap.
         homelab/config-rev: "3"
     spec:
+      # It never calls the Kubernetes API.
+      automountServiceAccountToken: false
       # It sends traffic to the Gateway, so it must run where Envoy runs
       # (CONTRIBUTING.md). Today that's only rpi-03 (laptop-01 is tainted).
       # Go back to 2 replicas when another Envoy node can take one.
