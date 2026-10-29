@@ -221,6 +221,9 @@ certificate serve it, and nothing on the Gateway changes.
    ```
 2. Bump `homelab/config-rev` in `infrastructure/configs/cloudflared/deployment.yaml`. That makes the pod restart and
    load the new config.
+   - Allow cloudflared to reach the backend: add its namespace, labels and container port to `allow-backends` in
+     `infrastructure/configs/cloudflared/networkpolicy.yaml`. Without it, the Gateway answers 403. Cilium's Envoy
+     checks cloudflared's egress policy against the backend too.
 3. In WSL, create the DNS record. It's a proxied CNAME to the tunnel:
    ```bash
    cloudflared tunnel route dns homelab <name>.green-tech-hub.com
@@ -282,6 +285,7 @@ certificate serve it, and nothing on the Gateway changes.
 | Public 502 | The tunnel reached Cloudflare but not the service. Check the rule's names, and that the backend pods run on an `l7-proxy=supported` node |
 | Public 530 / 1033 | No tunnel connector. Check `kubectl -n cloudflared get pods` and their logs |
 | Public 404 from Cloudflare | The tunnel has no rule for the hostname (check the rule order, and `config-rev` bumped) |
+| Public 403 from the Gateway | cloudflared's `allow-backends` policy doesn't list the backend (§6 step 2) |
 | `public-guard` fails | Each error names the host, namespace and missing control. "No HTTPRoute serves" means the rule's `httpHostHeader` (or hostname) matches no route's `hostnames` |
 
 </details>
