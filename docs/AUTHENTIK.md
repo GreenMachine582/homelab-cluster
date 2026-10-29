@@ -5,7 +5,8 @@ Authentik (`https://auth.home.green-tech-hub.com`) is the cluster's single sign-
 in the UI, because the repo is public.
 
 **Quick links:** [📦 Blueprints](#-blueprints) · [🔄 How changes apply](#-how-changes-apply) ·
-[🚪 Access](#-access) · [🔗 Social login](#-social-login) · [➕ Adding an application](#-adding-an-application) · [📣 Advisories](#-security-advisories) ·
+[🚪 Access](#-access) · [🔗 Social login](#-social-login) · [➕ Adding an application](#-adding-an-application) · [🚨 Alerts](#-alerts) ·
+[📣 Advisories](#-security-advisories) ·
 [🩺 Troubleshooting](#-troubleshooting)
 
 ---
@@ -27,6 +28,7 @@ apply in doesn't matter.
 | `brand.yaml` | The branding, from the variables in its `context:` ([Changing the brand](#-changing-the-brand)): the default brand's title, logo and favicon, and the login page's title. Also the embedded outpost's `authentik_host` = `https://auth.home…` |
 | `admins.yaml` | Group `homelab-admins`: Authentik superusers, with access to every application |
 | `grafana.yaml` | OAuth2 provider + application `grafana` (client secret from `authentik-grafana-oidc`), group `grafana-users`, and its access bindings |
+| `hardening.yaml` | No username enumeration (`pretend_user_exists`), no "remember me", 12-hour sessions, the `homelab-reputation` block on the login flow, and security events to Discord ([Alerts](#-alerts)) |
 | `sources.yaml` | GitHub, Google and Discord login sources (link-only, credentials from `authentik-social-sources`), the `homelab-source-authentication` flow (MFA, then login), and the buttons on the login page |
 
 - **Change them in git, not the UI.** UI edits to objects a blueprint defines are reverted on the next apply.
@@ -231,6 +233,24 @@ entries:
 ```
 
 </details>
+
+## 🚨 Alerts
+
+`hardening.yaml` posts Authentik events to Discord `#homelab-alerts` (the Alertmanager channel), through its Slack-format
+endpoint (`<webhook>/slack`, secret [`authentik-alerts-webhook`](SECRETS.md#-authentik-alerts-webhook)):
+
+| Rule | Events | Severity |
+|---|---|---|
+| `homelab-security-events` | `login_failed`, `suspicious_request` | warning |
+| `homelab-error-events` | `configuration_error`, `system_exception`, `policy_exception` | alert |
+| `homelab-change-events` | `model_created`, `model_updated`, `model_deleted`: changes made in the UI or API. Blueprint applies record none | notice |
+
+**Brute force:** each failed login lowers the IP's and the username's reputation. At `-5` the login flow stops applying
+to them ("Flow does not apply to current user"), before any password is checked. Scores recover over time. To let
+someone back in sooner: Admin → Customization → Reputation scores → delete theirs.
+
+**Test it** (LAN): sign in at `auth.home` with a wrong password 6 times. Each try posts a `login_failed`, and the next
+try is refused. Then delete the score. A rename in the UI (for example a group's attribute) posts a change event.
 
 ## 📣 Security advisories
 

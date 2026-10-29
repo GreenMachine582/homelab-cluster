@@ -13,7 +13,8 @@
 #
 # Every hostname here must pass scripts/public-guard.py (CI): the namespace it
 # reaches is hardened first. docs/ADDING_A_SERVICE.md "Before going public".
-# whoami is the M5.5 PR 3 test, removed again once it passes.
+# whoami stays as a canary for the tunnel → Gateway path (M5.5 PR 3's test,
+# kept on 29 Oct 2026). It echoes request headers and pod IPs, nothing more.
 apiVersion: v1
 kind: ConfigMap
 metadata:

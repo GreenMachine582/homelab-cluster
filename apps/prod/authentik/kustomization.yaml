@@ -7,3 +7,4 @@ resources:
   - authentik-secrets.sops.yaml
   - authentik-grafana-oidc.sops.yaml
   - authentik-social-sources.sops.yaml
+  - authentik-alerts-webhook.sops.yaml

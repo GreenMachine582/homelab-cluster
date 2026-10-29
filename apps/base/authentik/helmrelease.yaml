@@ -50,6 +50,8 @@ spec:
             name: authentik-grafana-oidc
         - secretRef:
             name: authentik-social-sources
+        - secretRef:
+            name: authentik-alerts-webhook
       # env wins over the secret's envFrom, so nothing here can be
       # overridden by accident.
       env:

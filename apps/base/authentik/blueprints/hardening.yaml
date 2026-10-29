@@ -1,0 +1,151 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# Hardening before auth goes public (M5.5 PR 4, decision 43): no username
+# enumeration, a reputation block on the login flow, 12-hour sessions with no
+# "remember me", and security events posted to Discord #homelab-alerts.
+#
+# Meta-applies homelab - Brand and outpost host (which applies Default -
+# Authentication flow first), then changes the default identification and
+# login stages, as mfa.yaml does (docs/AUTHENTIK.md "Blueprints").
+version: 1
+metadata:
+  name: homelab - Hardening
+entries:
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: homelab - Brand and outpost host
+      required: false
+
+  # The same answer for unknown usernames as for known ones, and no "remember
+  # me" checkbox.
+  - model: authentik_stages_identification.identificationstage
+    identifiers:
+      name: default-authentication-identification
+    attrs:
+      pretend_user_exists: true
+      enable_remember_me: false
+
+  # A session lasts 12 hours, and remember_me_offset adds nothing.
+  - model: authentik_stages_user_login.userloginstage
+    identifiers:
+      name: default-authentication-login
+    attrs:
+      session_duration: hours=12
+      remember_me_offset: seconds=0
+
+  # Failed logins lower an IP's and a username's score; at -5 the login flow
+  # stops applying to that client, before any password is checked. Bound to
+  # the flow, not a stage: a policy that skipped the password stage would let
+  # the flow carry on without it. Scores decay on their own; clear one in
+  # Admin → Customization → Reputation scores.
+  - model: authentik_policies_reputation.reputationpolicy
+    id: reputation
+    identifiers:
+      name: homelab-reputation
+    attrs:
+      check_ip: true
+      check_username: true
+      threshold: -5
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      policy: !KeyOf reputation
+    attrs:
+      order: 0
+
+  # Discord #homelab-alerts, the Alertmanager channel. Discord takes Slack's
+  # webhook format at <webhook>/slack. send_once: one post per event, not one
+  # per member of the destination group.
+  - model: authentik_events.notificationtransport
+    id: discord
+    identifiers:
+      name: homelab-alerts-discord
+    attrs:
+      mode: webhook_slack
+      webhook_url: !Format ["%s/slack", !Env AUTHENTIK_ALERTS_WEBHOOK]
+      send_once: true
+
+  - model: authentik_core.group
+    id: admins
+    identifiers:
+      name: homelab-admins
+
+  # What posts, by severity. Each rule's policy reads the event from
+  # request.context["event"].
+  - model: authentik_policies_expression.expressionpolicy
+    id: security
+    identifiers:
+      name: homelab-events-security
+    attrs:
+      expression: |
+        event = request.context.get("event")
+        return event is not None and event.action in ("login_failed", "suspicious_request")
+  - model: authentik_events.notificationrule
+    id: security-rule
+    identifiers:
+      name: homelab-security-events
+    attrs:
+      severity: warning
+      destination_group: !KeyOf admins
+      transports:
+        - !KeyOf discord
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf security-rule
+      policy: !KeyOf security
+    attrs:
+      order: 0
+
+  - model: authentik_policies_expression.expressionpolicy
+    id: errors
+    identifiers:
+      name: homelab-events-errors
+    attrs:
+      expression: |
+        event = request.context.get("event")
+        return event is not None and event.action in (
+            "configuration_error", "system_exception", "policy_exception",
+        )
+  - model: authentik_events.notificationrule
+    id: errors-rule
+    identifiers:
+      name: homelab-error-events
+    attrs:
+      severity: alert
+      destination_group: !KeyOf admins
+      transports:
+        - !KeyOf discord
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf errors-rule
+      policy: !KeyOf errors
+    attrs:
+      order: 0
+
+  # Changes made in the UI or the API. Blueprint applies run as worker tasks,
+  # outside a request, so they don't record model_* events and don't post.
+  - model: authentik_policies_expression.expressionpolicy
+    id: changes
+    identifiers:
+      name: homelab-events-changes
+    attrs:
+      expression: |
+        event = request.context.get("event")
+        return event is not None and event.action in (
+            "model_created", "model_updated", "model_deleted",
+        )
+  - model: authentik_events.notificationrule
+    id: changes-rule
+    identifiers:
+      name: homelab-change-events
+    attrs:
+      severity: notice
+      destination_group: !KeyOf admins
+      transports:
+        - !KeyOf discord
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf changes-rule
+      policy: !KeyOf changes
+    attrs:
+      order: 0
