@@ -1,6 +1,7 @@
 ---
-# https://whoami.green-tech-hub.com through the tunnel (M5.5 PR 3's test of
-# the public listener). Copy this for a public service: the https-public
+# whoami.green-tech-hub.com on the public listener: M5.5 PR 3's test, passed
+# 29 Oct 2026. The tunnel rule is gone again, so it's unreachable from the
+# internet; the route stays as the template. Copy this for a public service: the https-public
 # listener, the public hostname, and the security headers below
 # (docs/ADDING_A_SERVICE.md "Publishing").
 #

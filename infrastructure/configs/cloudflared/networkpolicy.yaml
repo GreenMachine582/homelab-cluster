@@ -72,8 +72,9 @@ spec:
 # public. Each new public host adds its backend's namespace and port here
 # (docs/ADDING_A_SERVICE.md "Publishing").
 #
-# whoami: M5.5 PR 3's test host, allowed ahead of its tunnel rule so the
-# Gateway path can be tested with it.
+# whoami: no tunnel rule (off again after M5.5 PR 3), but kept here as the
+# target for testing the Gateway path from a pod with cloudflared's label
+# (the gwtest command in #57).
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

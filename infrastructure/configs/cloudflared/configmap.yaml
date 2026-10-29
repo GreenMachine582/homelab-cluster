@@ -13,7 +13,8 @@
 #
 # Every hostname here must pass scripts/public-guard.py (CI): the namespace it
 # reaches is hardened first. docs/ADDING_A_SERVICE.md "Before going public".
-# whoami is the M5.5 PR 3 test, removed again once it passes.
+# whoami was M5.5 PR 3's test (passed 29 Oct 2026) and is off again: it
+# echoes headers and pod IPs. Its public route stays as the template.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -29,8 +30,4 @@ data:
     # the default (auto) each QUIC attempt burns ~10 s before falling back.
     protocol: http2
     ingress:
-      - hostname: whoami.green-tech-hub.com
-        service: https://cilium-gateway-homelab.gateway.svc.cluster.local:443
-        originRequest:
-          originServerName: whoami.green-tech-hub.com
       - service: http_status:404

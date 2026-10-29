@@ -243,7 +243,7 @@ sops apps/prod/my-app/my-app.sops.yaml
    kustomize bases are blocked.
 6. 🗓️ **Scheduling:** the control plane keeps its `NoSchedule` taint. The data node has no taint: its local PVs pin stateful pods there, and Postgres is protected by Guaranteed QoS
    and a `homelab-critical` PriorityClass ([M5](docs/M5_WORKLOADS.md#decisions)).
-7. 🛑 **Pre-exposure checks:** only the whoami test host is public (M5.5 PR 3), and it comes off again after its test. A tunnel hostname only merges if `public-guard` passes:
+7. 🛑 **Pre-exposure checks:** nothing is public right now. A tunnel hostname only merges if `public-guard` passes:
    PSA `restricted`, default-deny network policy, no service account token, hardened containers
    ([Before going public](docs/ADDING_A_SERVICE.md#-before-going-public)). Anything with admin or shared-write
    features goes public only behind Authentik.
