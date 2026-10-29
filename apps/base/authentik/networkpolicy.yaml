@@ -1,0 +1,82 @@
+---
+# Default deny (M5.5), as in apps/base/gth-playground/networkpolicy.yaml:
+# only the policies below let traffic through. L3/L4 rules only: the worker
+# can run on rpi-02, which has no L7 proxy.
+#
+# Only the chart's server and worker run in this namespace, so the policies
+# select the whole namespace rather than the chart's labels.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: authentik
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+# Name lookups, to CoreDNS only.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: authentik
+spec:
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - { port: "53", protocol: UDP }
+            - { port: "53", protocol: TCP }
+---
+# In: the Gateway (auth.home, the route's Service port 80 is the server's
+# http 9000) and the kubelet's probes. Grafana's OIDC calls go through
+# auth.home, so they arrive from the Gateway too. Between server and worker:
+# anything (they share the database, and this keeps a chart change from
+# breaking them).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-ingress
+  namespace: authentik
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities: [ingress, host]
+      toPorts:
+        - ports:
+            - { port: "9000", protocol: TCP }
+    - fromEndpoints:
+        - {}
+---
+# Out: the shared Postgres (apps/base/postgres allows this namespace back),
+# each other, and HTTPS to the internet: GitHub, Google and Discord login
+# (token and user-info calls from the server) and Authentik's version check.
+# world, not FQDNs: no L7 proxy rules.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-egress
+  namespace: authentik
+spec:
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: postgres
+            app.kubernetes.io/name: postgres
+      toPorts:
+        - ports:
+            - { port: "5432", protocol: TCP }
+    - toEndpoints:
+        - {}
+    - toEntities: [world]
+      toPorts:
+        - ports:
+            - { port: "443", protocol: TCP }

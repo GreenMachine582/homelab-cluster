@@ -6,6 +6,7 @@ resources:
   - helmrepository.yaml
   - helmrelease.yaml
   - httproute.yaml
+  - networkpolicy.yaml
 # Authentik config as code (blueprints/, docs/AUTHENTIK.md). The chart mounts
 # authentik-blueprints on the worker. Its name is fixed: the mount path
 # includes it, and Authentik keys each blueprint by path and name, so a new
