@@ -63,3 +63,31 @@ spec:
       toPorts:
         - ports:
             - { port: "443", protocol: TCP }
+---
+# The backends behind the tunnel's hostnames. Cilium's Envoy checks the
+# sender's egress policy against the final backend, not only against the
+# Gateway: without a rule here, a request through the tunnel gets a 403 from
+# the Gateway (found 29 Oct 2026; the same request from an unrestricted
+# namespace got a 200). So cloudflared reaches only the services meant to be
+# public. Each new public host adds its backend's namespace and port here
+# (docs/ADDING_A_SERVICE.md "Publishing").
+#
+# whoami: M5.5 PR 3's test host, allowed ahead of its tunnel rule so the
+# Gateway path can be tested with it.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-backends
+  namespace: cloudflared
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: cloudflared
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: whoami
+            app.kubernetes.io/name: whoami
+      toPorts:
+        - ports:
+            - { port: "8080", protocol: TCP }
