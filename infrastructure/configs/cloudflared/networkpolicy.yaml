@@ -1,0 +1,65 @@
+---
+# Default deny (M5.5), as in apps/base/gth-playground/networkpolicy.yaml:
+# only the policies below let traffic through. L3/L4 rules only.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: cloudflared
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+# Name lookups, to CoreDNS only (the edge's SRV records, the Gateway's name).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: cloudflared
+spec:
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - { port: "53", protocol: UDP }
+            - { port: "53", protocol: TCP }
+---
+# Out to Cloudflare's edge, and on to the Gateway. Nothing calls in: the
+# tunnel is outbound only, and host is the kubelet's probes on :2000.
+#
+# The edge: TCP 7844 (protocol: http2 in the ConfigMap); 443 for the
+# fallback and Cloudflare's API. world, not FQDNs: no L7 proxy rules here.
+#
+# The Gateway: traffic to Cilium's Gateway Service is handed to Envoy, which
+# Cilium identifies as the reserved ingress entity.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-tunnel
+  namespace: cloudflared
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: cloudflared
+  ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - { port: "2000", protocol: TCP }
+  egress:
+    - toEntities: [world]
+      toPorts:
+        - ports:
+            - { port: "7844", protocol: TCP }
+            - { port: "443", protocol: TCP }
+    - toEntities: [ingress]
+      toPorts:
+        - ports:
+            - { port: "443", protocol: TCP }
