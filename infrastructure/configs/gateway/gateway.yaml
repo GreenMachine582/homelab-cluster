@@ -8,6 +8,12 @@
 #
 # HTTPS takes routes from any namespace; each service adds an HTTPRoute with
 # parentRef sectionName: https. HTTP only carries the redirect below.
+#
+# https-public (M5.5) serves public <name>.green-tech-hub.com, reached only
+# through the tunnel: cloudflared keeps the public Host and SNI. Its wildcard
+# is a suffix match that also covers *.home names, but the more specific
+# https listener wins for those. No HTTP listener for it: cloudflared always
+# connects over TLS, and Cloudflare redirects browsers to HTTPS.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -35,6 +41,18 @@ spec:
         certificateRefs:
           - kind: Secret
             name: wildcard-home-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https-public
+      protocol: HTTPS
+      port: 443
+      hostname: "*.green-tech-hub.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: wildcard-public-tls
       allowedRoutes:
         namespaces:
           from: All

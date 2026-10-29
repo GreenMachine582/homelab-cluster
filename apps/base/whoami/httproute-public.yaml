@@ -1,0 +1,33 @@
+---
+# https://whoami.green-tech-hub.com through the tunnel (M5.5 PR 3's test of
+# the public listener). Copy this for a public service: the https-public
+# listener, the public hostname, and the security headers below
+# (docs/ADDING_A_SERVICE.md "Publishing").
+#
+# HSTS matches the Cloudflare edge setting: 6 months, no includeSubDomains
+# (the apex isn't managed here). A browser that's seen it refuses plain HTTP
+# for this name.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: whoami-public
+  namespace: whoami
+spec:
+  parentRefs:
+    - name: homelab
+      namespace: gateway
+      sectionName: https-public
+  hostnames:
+    - whoami.green-tech-hub.com
+  rules:
+    - filters:
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            set:
+              - { name: Strict-Transport-Security, value: max-age=15552000 }
+              - { name: X-Content-Type-Options, value: nosniff }
+              - { name: Referrer-Policy, value: strict-origin-when-cross-origin }
+              - { name: X-Frame-Options, value: DENY }
+      backendRefs:
+        - name: whoami
+          port: 80

@@ -16,6 +16,8 @@ spec:
       labels:
         app.kubernetes.io/name: whoami
     spec:
+      # It never calls the Kubernetes API.
+      automountServiceAccountToken: false
       # Behind the Gateway, so on a node that runs Envoy (CONTRIBUTING.md).
       nodeSelector:
         homelab/l7-proxy: supported

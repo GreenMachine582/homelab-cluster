@@ -1,0 +1,31 @@
+---
+# Default deny (M5.5), as in apps/base/gth-playground/networkpolicy.yaml.
+# whoami calls nothing, not even DNS, so there's no egress rule at all.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: whoami
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+# From the Gateway only (LAN and public routes alike), plus the kubelet's
+# readiness probe.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-gateway
+  namespace: whoami
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: whoami
+  ingress:
+    - fromEntities: [ingress, host]
+      toPorts:
+        - ports:
+            - { port: "8080", protocol: TCP }
