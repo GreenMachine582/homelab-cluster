@@ -193,7 +193,7 @@ homelab-cluster/
 | | |
 |---|---|
 | 🏠 **LAN services** | `https://<name>.home.green-tech-hub.com` → Gateway `192.168.50.240`. The Cloudflare `*.home` A record is DNS only, and the wildcard cert covers every name |
-| 🌍 **Public services** | `https://<name>.green-tech-hub.com` → Cloudflare → the `homelab` tunnel (outbound only, HTTP/2) → the Gateway. No router port forwards |
+| 🌍 **Public services** | `https://<name>.green-tech-hub.com` → Cloudflare → the `homelab` tunnel (outbound only, HTTP/2) → the Gateway's `https-public` listener, with its own `*.green-tech-hub.com` certificate. The public Host and SNI are kept end to end. No router port forwards |
 | 🧮 **Site LAN** | `192.168.50.0/24`: node statics below `.30`, router DHCP `.30–.239`, LB-IPAM `.240–.250` |
 | ☸️ **Cluster ranges** | pods `10.244.0.0/16`, Services `10.96.0.0/12`, API at `k8s-api:6443` (by name, so a subnet change isn't a rebuild) |
 | 🔑 **Admin access** | `kubectl` from WSL on the main PC over Tailscale. Node SSH and Tailscale are managed in HomeLab. From home, the site LAN is only reachable while laptop-01's subnet route is approved |
@@ -243,7 +243,7 @@ sops apps/prod/my-app/my-app.sops.yaml
    kustomize bases are blocked.
 6. 🗓️ **Scheduling:** the control plane keeps its `NoSchedule` taint. The data node has no taint: its local PVs pin stateful pods there, and Postgres is protected by Guaranteed QoS
    and a `homelab-critical` PriorityClass ([M5](docs/M5_WORKLOADS.md#decisions)).
-7. 🛑 **Pre-exposure checks:** nothing is public right now. A tunnel hostname only merges if `public-guard` passes:
+7. 🛑 **Pre-exposure checks:** only the whoami test host is public (M5.5 PR 3), and it comes off again after its test. A tunnel hostname only merges if `public-guard` passes:
    PSA `restricted`, default-deny network policy, no service account token, hardened containers
    ([Before going public](docs/ADDING_A_SERVICE.md#-before-going-public)). Anything with admin or shared-write
    features goes public only behind Authentik.

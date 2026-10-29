@@ -5,7 +5,9 @@
 # Production Let's Encrypt. Staging proved the Cloudflare token and DNS-01
 # first (#15); do the same for any new certificate, since production allows
 # only 5 failed validations per hostname per hour. Changing issuerRef
-# reissues into the same Secret, and the Gateway picks it up.
+# reissues into the same Secret, and the Gateway picks it up. Staging-first
+# is for a new issuer or token; a new name on this proven one goes straight
+# to production (wildcard-public, M5.5).
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -15,6 +17,24 @@ spec:
   secretName: wildcard-home-tls
   dnsNames:
     - "*.home.green-tech-hub.com"
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt
+---
+# The wildcard for public names (M5.5, decision 42), on the Gateway's
+# https-public listener. Public <name>.green-tech-hub.com keeps its own SNI
+# and Host from Cloudflare to the Gateway, so it needs its own certificate.
+# One label deep: it doesn't cover *.home names, which keep wildcard-home.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-public
+  namespace: gateway
+spec:
+  secretName: wildcard-public-tls
+  dnsNames:
+    - "*.green-tech-hub.com"
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer

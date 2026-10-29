@@ -208,31 +208,30 @@ python3 scripts/public-guard.py /tmp/apps.yaml /tmp/infra.yaml
 
 ### Publishing
 
-The tunnel sends `<name>.green-tech-hub.com` to the Gateway as `<name>.home.green-tech-hub.com`. The LAN route and
-certificate serve it, and nothing on the Gateway changes.
+Public `<name>.green-tech-hub.com` reaches the Gateway with its own Host and SNI, on the `https-public` listener and
+its `*.green-tech-hub.com` certificate. The LAN route stays as it is.
 
-1. Add a rule to `infrastructure/configs/cloudflared/configmap.yaml`, **above** the `http_status:404` catch-all:
+1. Add a public route: copy `apps/base/whoami/httproute-public.yaml` to `apps/base/<name>/`, list it in the
+   kustomization, and set the names. It attaches to `sectionName: https-public`, lists `<name>.green-tech-hub.com`,
+   and sets the security headers (HSTS, `nosniff`, `Referrer-Policy`, `X-Frame-Options: DENY`).
+2. Add a rule to `infrastructure/configs/cloudflared/configmap.yaml`, **above** the `http_status:404` catch-all.
+   There's no `httpHostHeader`, so the Host stays public:
    ```yaml
       - hostname: <name>.green-tech-hub.com
         service: https://cilium-gateway-homelab.gateway.svc.cluster.local:443
         originRequest:
-          originServerName: <name>.home.green-tech-hub.com
-          httpHostHeader: <name>.home.green-tech-hub.com
+          originServerName: <name>.green-tech-hub.com
    ```
-2. Bump `homelab/config-rev` in `infrastructure/configs/cloudflared/deployment.yaml`. That makes the pod restart and
+3. Bump `homelab/config-rev` in `infrastructure/configs/cloudflared/deployment.yaml`. That makes the pod restart and
    load the new config.
-   - Allow cloudflared to reach the backend: add its namespace, labels and container port to `allow-backends` in
-     `infrastructure/configs/cloudflared/networkpolicy.yaml`. Without it, the Gateway answers 403. Cilium's Envoy
-     checks cloudflared's egress policy against the backend too.
-3. In WSL, create the DNS record. It's a proxied CNAME to the tunnel:
+4. Allow cloudflared to reach the backend: add its namespace, labels and container port to `allow-backends` in
+   `infrastructure/configs/cloudflared/networkpolicy.yaml`. Without it, the Gateway answers 403. Cilium's Envoy
+   checks cloudflared's egress policy against the backend too.
+5. In WSL, create the DNS record. It's a proxied CNAME to the tunnel:
    ```bash
    cloudflared tunnel route dns homelab <name>.green-tech-hub.com
    ```
-4. Add the record to the [Cloudflare setup](CLOUDFLARE.md#-cloudflare-setup-manual) table.
-
-> [!NOTE]
-> Until M5.5 adds the public Gateway listener, public names are rewritten to their `.home` name, so the guard
-> follows `httpHostHeader` to the route. After that, each rule keeps its public Host and the route lists it.
+6. Add the record to the [Cloudflare setup](CLOUDFLARE.md#-cloudflare-setup-manual) table.
 
 ---
 
@@ -282,10 +281,10 @@ certificate serve it, and nothing on the Gateway changes.
 | 404 from the Gateway | The hostname isn't `<name>.home.green-tech-hub.com`, or the route isn't accepted |
 | 503 from the Gateway | No ready backend pods |
 | LAN request times out | From home: laptop-01's subnet route isn't approved. `cluster_status.yml` says so |
-| Public 502 | The tunnel reached Cloudflare but not the service. Check the rule's names, and that the backend pods run on an `l7-proxy=supported` node |
+| Public 502 | The tunnel reached Cloudflare but not the service. Check the rule's names (`originServerName` must be the public name, or the origin TLS check fails), the public route is `Accepted` on `https-public`, and the backend pods run on an `l7-proxy=supported` node |
 | Public 530 / 1033 | No tunnel connector. Check `kubectl -n cloudflared get pods` and their logs |
 | Public 404 from Cloudflare | The tunnel has no rule for the hostname (check the rule order, and `config-rev` bumped) |
-| Public 403 from the Gateway | cloudflared's `allow-backends` policy doesn't list the backend (§6 step 2) |
-| `public-guard` fails | Each error names the host, namespace and missing control. "No HTTPRoute serves" means the rule's `httpHostHeader` (or hostname) matches no route's `hostnames` |
+| Public 403 from the Gateway | cloudflared's `allow-backends` policy doesn't list the backend (§6 Publishing, step 4) |
+| `public-guard` fails | Each error names the host, namespace and missing control. "No HTTPRoute serves" means no route lists the public hostname: add the public route (§6 Publishing, step 1) |
 
 </details>

@@ -4,14 +4,16 @@
 #   cloudflared tunnel route dns homelab <name>.green-tech-hub.com
 # See docs/CLOUDFLARE.md.
 #
-# Public <name>.green-tech-hub.com goes to the shared Gateway as the LAN name
-# <name>.home.green-tech-hub.com: that SNI matches the wildcard certificate
-# (so TLS to the origin is verified), and that Host matches the service's
-# existing HTTPRoute. The Gateway, certificate and routes don't change.
+# Public <name>.green-tech-hub.com goes to the shared Gateway with its own
+# Host and SNI (M5.5, decision 42): no httpHostHeader rewrite.
+# originServerName is the public name, so the origin TLS check verifies the
+# Gateway's *.green-tech-hub.com certificate (https-public listener). Each
+# service adds a public HTTPRoute on https-public, and cloudflared's
+# allow-backends policy lists its backend (networkpolicy.yaml).
 #
 # Every hostname here must pass scripts/public-guard.py (CI): the namespace it
 # reaches is hardened first. docs/ADDING_A_SERVICE.md "Before going public".
-# whoami was taken off in M5.5 PR 1 and returns, hardened, in PR 3.
+# whoami is the M5.5 PR 3 test, removed again once it passes.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -27,4 +29,8 @@ data:
     # the default (auto) each QUIC attempt burns ~10 s before falling back.
     protocol: http2
     ingress:
+      - hostname: whoami.green-tech-hub.com
+        service: https://cilium-gateway-homelab.gateway.svc.cluster.local:443
+        originRequest:
+          originServerName: whoami.green-tech-hub.com
       - service: http_status:404
