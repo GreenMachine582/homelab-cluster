@@ -5,7 +5,7 @@ Authentik (`https://auth.home.green-tech-hub.com`) is the cluster's single sign-
 in the UI, because the repo is public.
 
 **Quick links:** [📦 Blueprints](#-blueprints) · [🔄 How changes apply](#-how-changes-apply) ·
-[🚪 Access](#-access) · [🔗 Social login](#-social-login) · [➕ Adding an application](#-adding-an-application) · [🚨 Alerts](#-alerts) ·
+[🚪 Access](#-access) · [🔗 Social login](#-social-login) · [✉️ Inviting someone](#️-inviting-someone) · [➕ Adding an application](#-adding-an-application) · [🚨 Alerts](#-alerts) ·
 [🌍 Public access](#-public-access) · [📣 Advisories](#-security-advisories) ·
 [🩺 Troubleshooting](#-troubleshooting)
 
@@ -25,10 +25,11 @@ apply in doesn't matter.
 | File | Sets |
 |---|---|
 | `mfa.yaml` | Default login flow: users without an MFA device must enroll one (TOTP or WebAuthn) |
-| `brand.yaml` | The branding, from the variables in its `context:` ([Changing the brand](#-changing-the-brand)): the default brand's title, logo and favicon, and the login page's title. Also the embedded outpost's `authentik_host` = `https://auth.green-tech-hub.com` (the public name, [Public access](#-public-access)) |
+| `brand.yaml` | The branding, from the variables in its `context:` ([Changing the brand](#-changing-the-brand)): the default brand's title, logo and favicon, and the login page's title. The public brand for `auth.green-tech-hub.com`, with the same look and no admin or edit buttons ([Public access](#-public-access)). Also the embedded outpost's `authentik_host` = `https://auth.green-tech-hub.com` (the public name, [Public access](#-public-access)) |
 | `admins.yaml` | Group `homelab-admins`: Authentik superusers, with access to every application |
 | `grafana.yaml` | OAuth2 provider + application `grafana` (client secret from `authentik-grafana-oidc`), group `grafana-users`, and its access bindings |
 | `hardening.yaml` | No username enumeration (`pretend_user_exists`), no "remember me", 12-hour sessions, the `homelab-reputation` block on the login flow, and security events to Discord ([Alerts](#-alerts)) |
+| `enrollment.yaml` | The invite-only sign-up flow `homelab-invitation-enrollment`: invitation → username, name, email → password (12+ characters, Have I Been Pwned) → user in the invite's group → MFA setup → login ([Inviting someone](#️-inviting-someone)) |
 | `sources.yaml` | GitHub, Google and Discord login sources (link-only, credentials from `authentik-social-sources`), the `homelab-source-authentication` flow (MFA, then login), and the buttons on the login page |
 
 - **Change them in git, not the UI.** UI edits to objects a blueprint defines are reverted on the next apply.
@@ -125,6 +126,30 @@ only.
 Put the IDs and secrets in `authentik-social-sources` ([SECRETS.md](SECRETS.md#-authentik-social-login-sources)).
 
 </details>
+
+## ✉️ Inviting someone
+
+Sign-up is invite-only (decision 41): there's no open enrollment, and social logins only link to an existing user.
+Links are shared by hand until there's SMTP.
+
+1. **Create the invite** on `auth.home`: Admin interface → Directory → Invitations → Create.
+   - **Flow:** `homelab-invitation-enrollment`.
+   - **Single use:** on.
+   - **Expires:** 7 days from now.
+   - **Fixed data:** the group the user joins, which must be an existing `<slug>-users` group:
+     ```yaml
+     invite_group: playground-users
+     ```
+2. **Send the link.** Copy the invite's link and swap the host for the public one:
+   `https://auth.green-tech-hub.com/if/flow/homelab-invitation-enrollment/?itoken=<token>`.
+3. **They sign up:** username, name and email, then a password (at least 12 characters, and not in a known breach),
+   then an MFA device (TOTP or WebAuthn). They're signed in at the end.
+4. **They link a social login** if they want one: on `auth.green-tech-hub.com` → user settings → Connected services.
+
+- **A bad group denies the sign-up.** A missing `invite_group`, a group that doesn't exist, or one that isn't
+  `<slug>-users` (so never `homelab-admins`) stops the flow with "This invitation isn't valid". Make a new invite.
+- **Revoke an unused invite** by deleting it. Once used, a single-use invite is gone.
+- **Invited users** live under the `users/invited` path (Directory → Users), apart from the users you made by hand.
 
 ## ➕ Adding an application
 
@@ -268,6 +293,9 @@ settings (`apps/base/authentik/httproute-public.yaml`). The admin interface stay
 - Cloudflare rate-limits `/api/v3/flows/executor/`, and the reputation policy ([Alerts](#-alerts)) blocks repeated
   failed logins ([CLOUDFLARE.md › Rules](CLOUDFLARE.md#-rules)).
 - Grafana's OIDC stays on `auth.home`.
+- **The public brand** (`brand.yaml`) has the same look as `auth.home`. It hides the *Admin interface* button
+  (custom CSS) and the edit pencil on applications (`enabledFeatures.applicationEdit: false`), because neither
+  works off the LAN. Brands match on the Host, which the public route keeps.
 - **A user page breaks on the public name:** open the browser's dev tools → Network, find the 404 on a path outside
   the list, and add that prefix to the route in a PR.
 
