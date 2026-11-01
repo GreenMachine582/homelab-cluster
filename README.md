@@ -251,8 +251,10 @@ sops apps/prod/my-app/my-app.sops.yaml
 8. 🚨 **Incidents:** kill switch, revoking sessions and rotation in [docs/INCIDENT.md](docs/INCIDENT.md).
 9. 📣 **Advisories:** the `goauthentik/authentik` repo is watched for security advisories on GitHub. Once `auth` is
    public, a CVE fix merges within days ([AUTHENTIK.md › Security advisories](docs/AUTHENTIK.md#-security-advisories)).
-10. ⏳ **In progress (M5.5):** Cilium network policies, default-deny per namespace. Done: `gth-playground`, `cloudflared`,
-    `postgres`, `authentik`. Everything else can still reach any pod (backlog).
+10. 🧱 **Network policies (M5.5):** Cilium default-deny per namespace for `gth-playground`, `cloudflared`, `postgres`
+    and `authentik`. Everything else can still reach any pod (backlog).
+11. ✉️ **Invite-only sign-up (M5.5):** no open enrollment. Invitations are single-use, expire after 7 days, and put
+    the user in one `<slug>-users` group ([AUTHENTIK.md › Inviting someone](docs/AUTHENTIK.md#️-inviting-someone)).
 
 ---
 

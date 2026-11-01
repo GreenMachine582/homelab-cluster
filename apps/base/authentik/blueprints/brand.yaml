@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
 # The branding, from the variables in context: below: the default brand's
-# title, logo and favicon, and the login page's title. Also the embedded
+# title, logo and favicon, the public brand, and the login page's title. Also the embedded
 # outpost's public URL. Login needs no base URL (Authentik uses the request's
 # host); authentik_host is what forward-auth and proxy providers redirect to,
 # so it's the public auth.green-tech-hub.com (M5.5 PR 4b): proxied apps are
@@ -47,6 +47,35 @@ entries:
         - https://raw.githubusercontent.com/GreenMachine582/greentechhub-ui/%s/%s
         - !Context ui_commit
         - !Context favicon_path
+
+  # The public name (M5.5 PR 5). Brands match on the request's Host, which the
+  # public route keeps. The same look, minus what's blocked publicly: no
+  # "Admin interface" button (/if/admin is LAN only) and no edit pencil on the
+  # applications. auth.home keeps the default brand and the full UI. A brand
+  # that isn't the default inherits no flows, so they're set here.
+  - model: authentik_brands.brand
+    identifiers:
+      domain: auth.green-tech-hub.com
+    attrs:
+      default: false
+      branding_title: !Context brand_name
+      branding_logo: !Format
+        - https://raw.githubusercontent.com/GreenMachine582/greentechhub-ui/%s/%s
+        - !Context ui_commit
+        - !Context logo_path
+      branding_favicon: !Format
+        - https://raw.githubusercontent.com/GreenMachine582/greentechhub-ui/%s/%s
+        - !Context ui_commit
+        - !Context favicon_path
+      branding_custom_css: |
+        a[href*="/if/admin"] { display: none !important; }
+      attributes:
+        settings:
+          enabledFeatures:
+            applicationEdit: false
+      flow_authentication: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      flow_invalidation: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+      flow_user_settings: !Find [authentik_flows.flow, [slug, default-user-settings-flow]]
 
   # The login page's heading; the default is "Welcome to authentik!".
   - model: authentik_flows.flow

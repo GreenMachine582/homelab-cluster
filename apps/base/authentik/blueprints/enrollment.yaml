@@ -1,0 +1,246 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# Invite-only sign-up (M5.5 PR 5, decision 41): an invitation link →
+# username, name and email → a password (12+ characters, not in Have I Been
+# Pwned) → the user is created in the invite's group → MFA setup → login.
+# Without a valid invitation the flow stops at its first stage.
+#
+# The invite names its group in fixed_data, as invite_group (docs/AUTHENTIK.md
+# "Inviting someone"). Only <slug>-users groups are allowed; any other value,
+# homelab-admins included, denies the sign-up.
+#
+# Meta-applies homelab - Brand and outpost host for the login stage it reuses,
+# and homelab - MFA required for the MFA stage.
+version: 1
+metadata:
+  name: homelab - Invitation enrollment
+entries:
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: homelab - Brand and outpost host
+      required: false
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: homelab - MFA required
+      required: false
+
+  - model: authentik_flows.flow
+    id: flow
+    identifiers:
+      slug: homelab-invitation-enrollment
+    attrs:
+      name: homelab-invitation-enrollment
+      title: Create your account
+      designation: enrollment
+      authentication: require_unauthenticated
+
+  # No invitation, an expired one or a used one: the flow stops here.
+  - model: authentik_stages_invitation.invitationstage
+    id: invitation
+    identifiers:
+      name: homelab-enrollment-invitation
+    attrs:
+      continue_flow_without_invitation: false
+
+  - model: authentik_stages_prompt.prompt
+    id: field-username
+    identifiers:
+      name: homelab-enrollment-field-username
+    attrs:
+      field_key: username
+      label: Username
+      type: username
+      required: true
+      placeholder: Username
+      order: 0
+  - model: authentik_stages_prompt.prompt
+    id: field-name
+    identifiers:
+      name: homelab-enrollment-field-name
+    attrs:
+      field_key: name
+      label: Name
+      type: text
+      required: true
+      placeholder: Name
+      order: 1
+  - model: authentik_stages_prompt.prompt
+    id: field-email
+    identifiers:
+      name: homelab-enrollment-field-email
+    attrs:
+      field_key: email
+      label: Email
+      type: email
+      required: true
+      placeholder: Email
+      order: 2
+  - model: authentik_stages_prompt.promptstage
+    id: details
+    identifiers:
+      name: homelab-enrollment-details
+    attrs:
+      fields:
+        - !KeyOf field-username
+        - !KeyOf field-name
+        - !KeyOf field-email
+
+  # The prompt stage checks password and password_repeat match; the policy
+  # checks the rest.
+  - model: authentik_policies_password.passwordpolicy
+    id: password-policy
+    identifiers:
+      name: homelab-password-policy
+    attrs:
+      password_field: password
+      check_static_rules: true
+      length_min: 12
+      amount_digits: 0
+      amount_lowercase: 0
+      amount_uppercase: 0
+      amount_symbols: 0
+      check_have_i_been_pwned: true
+      hibp_allowed_count: 0
+      check_zxcvbn: false
+      error_message: Use at least 12 characters, and a password that hasn't appeared in a known breach.
+  - model: authentik_stages_prompt.prompt
+    id: field-password
+    identifiers:
+      name: homelab-enrollment-field-password
+    attrs:
+      field_key: password
+      label: Password
+      type: password
+      required: true
+      placeholder: Password (12+ characters)
+      order: 0
+  - model: authentik_stages_prompt.prompt
+    id: field-password-repeat
+    identifiers:
+      name: homelab-enrollment-field-password-repeat
+    attrs:
+      field_key: password_repeat
+      label: Password (repeat)
+      type: password
+      required: true
+      placeholder: Password (repeat)
+      order: 1
+  - model: authentik_stages_prompt.promptstage
+    id: password
+    identifiers:
+      name: homelab-enrollment-password
+    attrs:
+      fields:
+        - !KeyOf field-password
+        - !KeyOf field-password-repeat
+      validation_policies:
+        - !KeyOf password-policy
+
+  # Denies the sign-up when the invite's group is missing or isn't a
+  # <slug>-users group that exists.
+  - model: authentik_policies_expression.expressionpolicy
+    id: bad-invite-group
+    identifiers:
+      name: homelab-enrollment-bad-invite-group
+    attrs:
+      expression: |
+        from authentik.core.models import Group
+        name = (request.context.get("prompt_data") or {}).get("invite_group", "")
+        ok = name.endswith("-users") and Group.objects.filter(name=name).exists()
+        if not ok:
+            ak_message("This invitation isn't valid. Ask for a new one.")
+        return not ok
+  - model: authentik_stages_deny.denystage
+    id: deny
+    identifiers:
+      name: homelab-enrollment-deny
+
+  # Puts the new user in the invite's group. The user write stage reads groups
+  # from the flow plan, not from prompt data, so this moves it across.
+  - model: authentik_policies_expression.expressionpolicy
+    id: set-group
+    identifiers:
+      name: homelab-enrollment-set-group
+    attrs:
+      expression: |
+        from authentik.core.models import Group
+        plan = request.context["flow_plan"]
+        name = plan.context["prompt_data"].pop("invite_group")
+        plan.context["groups"] = [Group.objects.get(name=name)]
+        return True
+  - model: authentik_stages_user_write.userwritestage
+    id: user-write
+    identifiers:
+      name: homelab-enrollment-user-write
+    attrs:
+      user_creation_mode: always_create
+      user_type: internal
+      user_path_template: users/invited
+      create_users_as_inactive: false
+
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf invitation
+    attrs:
+      order: 10
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf details
+    attrs:
+      order: 20
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf password
+    attrs:
+      order: 30
+  # Checked after the invitation stage has loaded fixed_data, so the policy
+  # runs at that point, not when the flow is planned.
+  - model: authentik_flows.flowstagebinding
+    id: deny-binding
+    identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf deny
+    attrs:
+      order: 40
+      evaluate_on_plan: false
+      re_evaluate_policies: true
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf deny-binding
+      policy: !KeyOf bad-invite-group
+    attrs:
+      order: 0
+  - model: authentik_flows.flowstagebinding
+    id: user-write-binding
+    identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf user-write
+    attrs:
+      order: 50
+      evaluate_on_plan: false
+      re_evaluate_policies: true
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf user-write-binding
+      policy: !KeyOf set-group
+    attrs:
+      order: 0
+  # MFA needs the user to exist, so it comes after the write. A user who drops
+  # out here still has to enroll MFA at their first login (mfa.yaml).
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow
+      stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, default-authentication-mfa-validation]]
+    attrs:
+      order: 60
+  # The default login stage: 12-hour sessions (hardening.yaml).
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow
+      stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
+    attrs:
+      order: 70
