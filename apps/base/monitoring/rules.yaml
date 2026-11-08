@@ -14,12 +14,18 @@ spec:
     - name: homelab-nodes
       rules:
         # node_boot_time_seconds is "now minus uptime" on the node, so it also
-        # moves when the node's clock steps. Either way, worth a look.
+        # moves when the node's clock steps. Either way, worth a look. chrony
+        # nudges it by a few seconds routinely, so only a move of more than a
+        # minute counts.
         - alert: NodeRebooted
           expr: |
             (time() - node_boot_time_seconds < 900)
             or
-            (changes(node_boot_time_seconds[30m]) > 0)
+            (
+              max_over_time(node_boot_time_seconds[30m])
+              - min_over_time(node_boot_time_seconds[30m])
+              > 60
+            )
           labels:
             severity: warning
           annotations:
