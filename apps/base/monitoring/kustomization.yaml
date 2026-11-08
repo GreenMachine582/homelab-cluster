@@ -7,4 +7,5 @@ resources:
   - pv.yaml
   - pvc-grafana.yaml
   - helmrelease.yaml
+  - rules.yaml
   - httproute.yaml
