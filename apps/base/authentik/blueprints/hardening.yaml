@@ -13,11 +13,14 @@ metadata:
   name: homelab - Hardening
 entries:
   # The same answer for unknown usernames as for known ones, and no "remember
-  # me" checkbox.
+  # me" checkbox. user_fields is the default's value, restated: the serializer
+  # checks this entry's attrs on their own, and with neither user_fields nor
+  # sources it fails "at least one source must be selected".
   - model: authentik_stages_identification.identificationstage
     identifiers:
       name: default-authentication-identification
     attrs:
+      user_fields: [email, username]
       pretend_user_exists: true
       enable_remember_me: false
 
