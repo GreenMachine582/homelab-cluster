@@ -141,23 +141,30 @@ Put the IDs and secrets in `authentik-social-sources` ([SECRETS.md](SECRETS.md#-
 Sign-up is invite-only (decision 41): there's no open enrollment, and social logins only link to an existing user.
 Links are shared by hand until there's SMTP.
 
-1. **Create the invite** on `auth.home`: Admin interface → Directory → Invitations → Create.
-   - **Flow:** `homelab-invitation-enrollment`.
-   - **Single use:** on.
-   - **Expires:** 7 days from now.
-   - **Fixed data:** the group the user joins, which must be an existing `<slug>-users` group:
-     ```yaml
-     invite_group: playground-users
-     ```
-2. **Send the link.** Copy the invite's link and swap the host for the public one:
+1. **Create the invite** in WSL, from the repo root. The group must be an existing `<slug>-users` group:
+   ```bash
+   scripts/authentik-invite.sh playground-users          # -d DAYS (default 7), -u CREATED_BY (default akadmin)
+   ```
+   It makes a single-use invite for `homelab-invitation-enrollment` and prints its public link.
+   <details><summary>Or in the admin UI</summary>
+
+   On `auth.home`: Admin interface → Directory → Invitations → Create, with flow `homelab-invitation-enrollment`,
+   single use on, expiry 7 days, and fixed data `invite_group: playground-users`. The UI builds the link from the
+   host it's open on, so swap `auth.home.` for `auth.` before sending it:
    `https://auth.green-tech-hub.com/if/flow/homelab-invitation-enrollment/?itoken=<token>`.
+
+   </details>
+2. **Send the link.**
 3. **They sign up:** username, name and email, then a password (at least 12 characters, and not in a known breach),
    then an MFA device (TOTP or WebAuthn). They're signed in at the end.
 4. **They link a social login** if they want one: on `auth.green-tech-hub.com` → user settings → Connected services.
 
 - **A bad group denies the sign-up.** A missing `invite_group`, a group that doesn't exist, or one that isn't
   `<slug>-users` (so never `homelab-admins`) stops the flow with "This invitation isn't valid". Make a new invite.
-- **Revoke an unused invite** by deleting it. Once used, a single-use invite is gone.
+- **Opening the link uses the invite.** Authentik deletes a single-use invite as soon as the flow gets past the
+  invitation stage, not when the sign-up finishes. If they give up partway or open it in another browser, make a
+  new one. Don't open it yourself to test it.
+- **Revoke an unused invite** by deleting it in Admin → Directory → Invitations.
 - **Invited users** live under the `users/invited` path (Directory → Users), apart from the users you made by hand.
 
 ## ➕ Adding an application
