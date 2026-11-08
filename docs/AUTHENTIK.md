@@ -13,14 +13,23 @@ in the UI, because the repo is public.
 
 ## 📦 Blueprints
 
-There's one file per concern. Each starts with a `metaapplyblueprint` for any default it changes, so the order they
-apply in doesn't matter.
+There's one file per concern. A file may start with a `metaapplyblueprint` for a **Default** blueprint it changes,
+one level deep. It never meta-applies another `homelab -` blueprint. Objects it only uses (a stage, a flow, a
+group) it finds with `!Find`.
 
 > [!IMPORTANT]
-> A `metaapplyblueprint` **re-applies the whole default blueprint** every time, and resets whatever that default
-> sets. *Default - Authentication flow* sets the login title to "Welcome to authentik!". So only `brand.yaml`
-> meta-applies it, then sets the title. Any other file that needs the default login flow meta-applies
-> `homelab - Brand and outpost host` instead (as `mfa.yaml` and `sources.yaml` do).
+> A `metaapplyblueprint` **runs the whole nested blueprint inline**, twice: once in the parent's validate pass and
+> again in its apply pass, and the nested blueprint's own meta-applies do the same. A chain of `homelab -`
+> blueprints multiplies that. Until Nov 2026, `hardening.yaml` and `enrollment.yaml` chained through
+> `brand.yaml` to *Default - Authentication flow*. Every run took over the worker's 10-minute limit, and two
+> runs locked the same rows. Neither ever applied ([Troubleshooting](#-troubleshooting)).
+>
+> It also **resets whatever that default sets**. *Default - Authentication flow* sets the login title to "Welcome
+> to authentik!", so only `brand.yaml` meta-applies it, then sets the title. Other files change the default
+> login flow's stages by name.
+
+**On a fresh install,** a file whose `!Find` target doesn't exist yet fails, and Authentik retries it. To speed this
+up, apply them in Admin → Customization → Blueprints in this order: `brand`, `mfa`, `admins`, then the rest.
 
 | File | Sets |
 |---|---|
@@ -334,6 +343,33 @@ wait.
 
 On 27 Oct 2026, the first start after the blueprints landed queued discovery but never ran it. The blueprints were
 then applied by hand with step 3.
+
+</details>
+
+<details>
+<summary>⏱️ <b>A blueprint stays at Unknown or Error, with <code>TimeLimitExceeded</code></b></summary>
+
+The blueprint's tasks pile up in Running and Waiting to run, and the worker log shows
+`Failed to process message authentik.blueprints.v1.tasks.apply_blueprint(...)` with `TimeLimitExceeded` in
+`importer.validate`. Each run takes over the 10-minute task limit and is killed, then retried, forever.
+Its objects never appear.
+
+- **Count the failures:** run this on one line.
+  ```
+  kubectl -n postgres exec postgres-0 -- psql -U postgres -d authentik -c "select date_trunc('day', mtime), count(*) from authentik_tasks_task where state='rejected' and actor_name like '%apply_blueprint' group by 1 order by 1"
+  ```
+- **Look for lock waits:** two applies can block each other on the same rows. One shows as `idle in transaction`,
+  the other as blocked by it.
+  ```
+  kubectl -n postgres exec postgres-0 -- psql -U postgres -c "select pid, state, now()-xact_start, pg_blocking_pids(pid) from pg_stat_activity where usename='authentik' and xact_start is not null"
+  ```
+- **Cause:** a chain of meta-applies ([Blueprints](#-blueprints)). Remove the meta-apply of any `homelab -`
+  blueprint, and find what it uses with `!Find` instead.
+- **Then clear the stuck runs:** `kubectl -n authentik rollout restart deploy/authentik-worker`. The restart ends
+  their transactions, and the changed files apply.
+
+Found on 8 Nov 2026. `hardening.yaml` (M5.5 PR 4a) and `enrollment.yaml` (PR 5) had never applied, with about 35
+failed runs a day since 28 Oct. Nothing alerted, and the public `auth` host ran without the hardening.
 
 </details>
 

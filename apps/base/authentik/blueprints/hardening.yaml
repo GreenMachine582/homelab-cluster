@@ -3,19 +3,15 @@
 # enumeration, a reputation block on the login flow, 12-hour sessions with no
 # "remember me", and security events posted to Discord #homelab-alerts.
 #
-# Meta-applies homelab - Brand and outpost host (which applies Default -
-# Authentication flow first), then changes the default identification and
-# login stages, as mfa.yaml does (docs/AUTHENTIK.md "Blueprints").
+# Changes the default identification and login stages by name, as mfa.yaml
+# does. No meta-apply: homelab blueprints never meta-apply each other. Nested
+# applies run inline twice per level, and the chain this used to have timed
+# out on every run, so none of this applied until Nov 2026
+# (docs/AUTHENTIK.md "Blueprints").
 version: 1
 metadata:
   name: homelab - Hardening
 entries:
-  - model: authentik_blueprints.metaapplyblueprint
-    attrs:
-      identifiers:
-        name: homelab - Brand and outpost host
-      required: false
-
   # The same answer for unknown usernames as for known ones, and no "remember
   # me" checkbox.
   - model: authentik_stages_identification.identificationstage
