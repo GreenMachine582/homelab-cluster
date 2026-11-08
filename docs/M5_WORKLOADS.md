@@ -10,7 +10,8 @@ Kuma); it now ships workloads first and keeps only the monitoring that the clust
 
 > [!NOTE]
 > **✅ M5 is done (28 Oct 2026).** Every exit test passed. M5.5, the public playground behind Authentik,
-> is in progress (migration plan): its pre-exposure checks took whoami off the tunnel, so nothing is public now. M4 is done too, since its backup drive went live on 28 Oct.
+> is in progress (migration plan). Public now: `auth` (user paths only) and `whoami`, the tunnel → Gateway canary
+> until the playground goes public. M4 is done too, since its backup drive went live on 28 Oct.
 
 **Exit test:**
 - [x] The playground is reachable at `https://playground.home.green-tech-hub.com`.

@@ -1,8 +1,9 @@
 # 🧩 Adding a service
 
 How to put an app on the cluster behind the shared Gateway, on the LAN and optionally in public. The worked
-example is `whoami` (`apps/base/whoami`), live at `https://whoami.home.green-tech-hub.com`. It was public too until
-M5.5 took it off the tunnel; it comes back once it's hardened. Replace `<name>` with the service's name throughout.
+example is `whoami` (`apps/base/whoami`), live at `https://whoami.home.green-tech-hub.com`, and in public at
+`https://whoami.green-tech-hub.com` as the canary for the tunnel → Gateway path until the playground goes public
+(M5.5). Replace `<name>` with the service's name throughout.
 
 **Quick links:** [📁 Layout](#-1-layout) · [🏗️ Deployment](#️-2-deployment) · [🌐 Route](#-3-service-and-httproute) ·
 [🔐 Secrets](#-4-secrets) · [💾 Storage](#-5-storage) · [☁️ Public](#️-6-public-access-optional) ·
