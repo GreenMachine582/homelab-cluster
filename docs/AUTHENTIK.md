@@ -45,6 +45,10 @@ up, apply them in Admin → Customization → Blueprints in this order: `brand`,
 - **Syntax:** the [blueprint docs](https://docs.goauthentik.io/customize/blueprints/).
   - `!Find` looks up an existing object.
   - `!KeyOf` refers to an entry's `id` in the same file.
+  - **A policy binding's `target`** is the object's policy binding model id. `!KeyOf` converts to it, but `!Find` on
+    a flow returns the flow's own pk, so the binding is never matched and every re-apply fails on a duplicate. To
+    bind to a flow from another file, find the binding model:
+    `!Find [authentik_policies.policybindingmodel, [flow__slug, <slug>]]`.
   - `!Env` reads the worker's environment, which is how secrets reach a blueprint.
   - `!Context` reads a variable from the file's `context:` block, and `!Format` builds a string from values
     (`%s` placeholders).

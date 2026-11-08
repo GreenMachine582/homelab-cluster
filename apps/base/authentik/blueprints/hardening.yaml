@@ -45,9 +45,12 @@ entries:
       check_ip: true
       check_username: true
       threshold: -5
+  # A binding's target is the flow's policy binding model id, not the flow's
+  # own pk, which is what !Find on authentik_flows.flow returns. With that, the
+  # existing binding wasn't found and every re-apply failed on a duplicate.
   - model: authentik_policies.policybinding
     identifiers:
-      target: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      target: !Find [authentik_policies.policybindingmodel, [flow__slug, default-authentication-flow]]
       policy: !KeyOf reputation
     attrs:
       order: 0
