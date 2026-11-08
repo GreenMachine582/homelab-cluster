@@ -13,14 +13,10 @@ version: 1
 metadata:
   name: homelab - Social login
 entries:
-  # The defaults this uses, so they exist first. The default login flow comes
-  # through brand.yaml, not directly: re-applying "Default - Authentication
-  # flow" resets the login title, and brand.yaml sets it again right after.
-  - model: authentik_blueprints.metaapplyblueprint
-    attrs:
-      identifiers:
-        name: homelab - Brand and outpost host
-      required: false
+  # The default this uses, so it exists first. The default login flow's
+  # stages are changed by name and aren't meta-applied: only brand.yaml
+  # meta-applies "Default - Authentication flow", and homelab blueprints
+  # never meta-apply each other (docs/AUTHENTIK.md "Blueprints").
   - model: authentik_blueprints.metaapplyblueprint
     attrs:
       identifiers:

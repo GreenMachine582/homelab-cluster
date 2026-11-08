@@ -8,23 +8,14 @@
 # "Inviting someone"). Only <slug>-users groups are allowed; any other value,
 # homelab-admins included, denies the sign-up.
 #
-# Meta-applies homelab - Brand and outpost host for the login stage it reuses,
-# and homelab - MFA required for the MFA stage.
+# Reuses the default login flow's MFA and login stages (mfa.yaml,
+# hardening.yaml) with !Find. No meta-apply: homelab blueprints never
+# meta-apply each other (docs/AUTHENTIK.md "Blueprints"). On a fresh install
+# this errors until those stages exist, and Authentik retries it.
 version: 1
 metadata:
   name: homelab - Invitation enrollment
 entries:
-  - model: authentik_blueprints.metaapplyblueprint
-    attrs:
-      identifiers:
-        name: homelab - Brand and outpost host
-      required: false
-  - model: authentik_blueprints.metaapplyblueprint
-    attrs:
-      identifiers:
-        name: homelab - MFA required
-      required: false
-
   - model: authentik_flows.flow
     id: flow
     identifiers:
