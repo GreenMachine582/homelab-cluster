@@ -1,0 +1,57 @@
+---
+# Alerts the stock kube-prometheus-stack rules are too slow for or don't
+# have. From the Nov 2026 power cut: the Pis rebooted with their clocks 24
+# days behind, chrony stepped them forward under the new pods, and pods stuck
+# in CreateContainerError took Alertmanager and Flux's network down with them.
+# The stock KubeContainerWaiting waits an hour. These fire sooner.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homelab-nodes
+  namespace: monitoring
+spec:
+  groups:
+    - name: homelab-nodes
+      rules:
+        # node_boot_time_seconds is "now minus uptime" on the node, so it also
+        # moves when the node's clock steps. Either way, worth a look.
+        - alert: NodeRebooted
+          expr: |
+            (time() - node_boot_time_seconds < 900)
+            or
+            (changes(node_boot_time_seconds[30m]) > 0)
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.instance }} rebooted, or its clock stepped"
+            description: >-
+              The boot time of {{ $labels.instance }} changed in the last 30 minutes. Check that
+              nothing is stuck in CreateContainerError (HomeLab docs/K8S_PATCHING.md, Troubleshooting).
+
+        # The node's clock vs Prometheus's. A Pi that booted on a stale
+        # clock and hasn't synced yet.
+        - alert: NodeClockWrong
+          expr: abs(timestamp(node_time_seconds) - node_time_seconds) > 60
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.instance }}'s clock is {{ $value | humanizeDuration }} off"
+            description: >-
+              Check `chronyc tracking` on the node. Pods started before the clock is corrected can be
+              left in CreateContainerError.
+
+        - alert: ContainerStuckCreating
+          expr: |
+            max by (namespace, pod, container) (
+              kube_pod_container_status_waiting_reason{reason=~"CreateContainerError|CreateContainerConfigError"}
+            ) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) can't be created"
+            description: >-
+              `kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}`. "failed to reserve
+              container name ... is reserved for <id>" means an orphaned container: see HomeLab
+              docs/K8S_PATCHING.md, Troubleshooting.
