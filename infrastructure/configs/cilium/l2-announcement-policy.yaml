@@ -1,9 +1,17 @@
 ---
-# Answer ARP for LoadBalancer IPs from one node at a time (a lease). Only
-# nodes that run Envoy (homelab/l7-proxy=supported: laptop-01, rpi-03): the
-# Gateway's traffic is handled by the Envoy on the node that receives it,
-# and the Pi 4s can't run Envoy. Only the wired LAN interfaces, never
-# tailscale0.
+# Answer ARP for LoadBalancer IPs from rpi-03 only (homelab/role=data). It
+# runs Envoy (homelab/l7-proxy=supported), which handles the Gateway's
+# traffic on the node that receives it.
+#
+# Not laptop-01, although it can run Envoy too: it is the Tailscale subnet
+# router for the Gateway's /32 (the admin path to auth.home, HomeLab
+# docs/REMOTE_ACCESS.md). If it also held the lease, traffic forwarded in
+# from tailscale0 would have to reach Cilium's load balancer on the same
+# node, which isn't a supported path. With rpi-03 announcing, laptop-01 only
+# forwards onto the LAN. No real availability is lost: Authentik's Postgres
+# lives on rpi-03, so with rpi-03 down every *.home service is down anyway.
+#
+# Only the wired LAN interfaces, never tailscale0.
 apiVersion: cilium.io/v2alpha1
 kind: CiliumL2AnnouncementPolicy
 metadata:
@@ -11,6 +19,7 @@ metadata:
 spec:
   nodeSelector:
     matchLabels:
+      homelab/role: data
       homelab/l7-proxy: supported
   interfaces:
     - ^enp3s0$

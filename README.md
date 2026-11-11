@@ -160,8 +160,9 @@ homelab-cluster/
   limits are tight).
 - **LoadBalancer IPs:** Cilium LB-IPAM, pool `192.168.50.240–.250`, announced by Cilium L2 (ARP). The router's DHCP
   pool was shrunk to `.30–.239` to make room.
-- **Where L2 answers:** only nodes labelled `homelab/l7-proxy=supported` (laptop-01, rpi-03), because the Gateway's
-  traffic goes through Envoy, which can't run on the Pi 4s.
+- **Where L2 answers:** rpi-03 only (`homelab/role=data`, and `l7-proxy=supported`, because the Gateway's traffic goes
+  through Envoy, which can't run on the Pi 4s). Not laptop-01: it's the Tailscale router for the Gateway's /32, and it
+  shouldn't also be the node that receives that traffic (`l2-announcement-policy.yaml`).
 - **Gateway:** Cilium Gateway API (CRDs imported by commit through a pinned Flux source, not vendored). One shared
   `gateway/homelab` on `192.168.50.240`: an HTTPS listener with the wildcard cert, and HTTP → HTTPS. Services attach
   an `HTTPRoute` to `sectionName: https`.
@@ -177,8 +178,9 @@ homelab-cluster/
 <details>
 <summary><b>Things to know</b></summary>
 
-- **L2 failover:** one supported node answers ARP for a pool IP at a time (a lease). If it goes down, the other
-  takes over within about 15 s. With only laptop-01 and rpi-03 eligible, both down means the Gateway is unreachable.
+- **No L2 failover:** only rpi-03 answers ARP for the pool IPs. If it goes down, the Gateway's LAN IP is unreachable
+  until it's back. Authentik's database is on rpi-03 too, so the `*.home` services would be down anyway. Public
+  traffic doesn't use the LAN IP: cloudflared reaches the Gateway inside the cluster.
 - **After a rebuild:** if the Gateway stays `Programmed: False` once Flux has upgraded Cilium, restart
   `deploy/cilium-operator` once. It only checks for the Gateway API CRDs at start.
 - **DNS-01:** cert-manager checks propagation against public resolvers (`1.1.1.1`, `8.8.8.8`), not the site router,
